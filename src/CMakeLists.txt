@@ -32,8 +32,21 @@ include_directories("${NLOHMANN_INCLUDE_DIR}")
 include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${CURLWRAPPER_INCLUDE_DIR}")
 include_directories("${JSONUTILS_INCLUDE_DIR}")
+if(APPLE)
+  include_directories("/opt/homebrew/Cellar/fcgi/2.4.4/include")
+endif()
+
+if(APPLE)
+  link_directories("/opt/homebrew/Cellar/fcgi/2.4.4/lib")
+	link_directories("${CURLWRAPPER_LIB_DIR}")
+endif()
 
 add_library (FastCGIAPI SHARED ${SOURCES} ${HEADERS})
+
+if(APPLE)
+  target_link_libraries(FastCGIAPI CurlWrapper)
+	target_link_libraries(FastCGIAPI fcgi)
+endif()
 
 install (TARGETS FastCGIAPI DESTINATION lib)
 install (FILES ${HEADERS} DESTINATION include)
