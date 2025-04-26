@@ -666,8 +666,9 @@ void FastCGIAPI::sendSuccess(
 				", requestURI: {}"
 				", requestMethod: {}"
 				", responseBody.size: @{}@"
-				", completeHttpResponse: {}",
-				requestIdentifier, sThreadId, requestURI, requestMethod, responseBody.size(), completeHttpResponse
+				", httpStatus: {}",
+				// ", completeHttpResponse: {}", spesso la response è troppo lunga, per cui logghiamo solo httpStatus
+				requestIdentifier, sThreadId, requestURI, requestMethod, responseBody.size(), httpStatus //, completeHttpResponse
 			);
 
 		// si potrebbe usare anche FCGX_PutStr, in questo caso
