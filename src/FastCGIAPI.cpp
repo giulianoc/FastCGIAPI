@@ -681,7 +681,7 @@ void FastCGIAPI::sendSuccess(
 	_fcgxFinishDone = true;
 }
 
-void FastCGIAPI::sendRedirect(FCGX_Request &request, string locationURL)
+void FastCGIAPI::sendRedirect(FCGX_Request &request, string locationURL, bool permanently, string contentType)
 {
 	if (_fcgxFinishDone)
 	{
@@ -697,13 +697,17 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, string locationURL)
 
 	string endLine = "\r\n";
 
-	int htmlResponseCode = 301;
+	int htmlResponseCode = permanently ? 301 : 302;
 
 	string completeHttpResponse = std::format(
 		"Status: {} {}{}"
-		"Location: {}{}{}",
-		htmlResponseCode, getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine, endLine
+		"Location: {}{}",
+		htmlResponseCode, getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine
 	);
+	if (contentType != "")
+		completeHttpResponse += std::format("Content-Type: {}{}{}", contentType, endLine, endLine);
+	else
+		completeHttpResponse += endLine;
 
 	SPDLOG_INFO(
 		"HTTP Success"

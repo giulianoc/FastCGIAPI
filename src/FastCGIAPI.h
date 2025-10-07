@@ -69,7 +69,7 @@ class FastCGIAPI
 		int htmlResponseCode, string responseBody = "", string contentType = "", string cookieName = "", string cookieValue = "",
 		string cookiePath = "", bool enableCorsGETHeader = false, string originHeader = ""
 	);
-	void sendRedirect(FCGX_Request &request, string locationURL);
+	void sendRedirect(FCGX_Request &request, string locationURL, bool permanently, string contentType = "");
 	void sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, unsigned long fileSize);
 	void sendHeadSuccess(int htmlResponseCode, unsigned long fileSize);
 	virtual void sendError(FCGX_Request &request, int htmlResponseCode, string errorMessage);
