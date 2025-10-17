@@ -13,7 +13,7 @@
 using namespace std;
 
 using json = nlohmann::json;
-using orderd_json = nlohmann::ordered_json;
+using ordered_json = nlohmann::ordered_json;
 using namespace nlohmann::literals;
 
 struct CheckAuthorizationFailed : public exception
