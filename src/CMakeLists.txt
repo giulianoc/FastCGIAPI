@@ -33,11 +33,11 @@ include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${CURLWRAPPER_INCLUDE_DIR}")
 include_directories("${JSONUTILS_INCLUDE_DIR}")
 if(APPLE)
-  include_directories("/opt/homebrew/Cellar/fcgi/2.4.4/include")
+  include_directories("${FCGI_INCLUDE_DIR}/include")
 endif()
 
 if(APPLE)
-  link_directories("/opt/homebrew/Cellar/fcgi/2.4.4/lib")
+  link_directories("${FCGI_INCLUDE_DIR}/lib")
 	link_directories("${CURLWRAPPER_LIB_DIR}")
 endif()
 
