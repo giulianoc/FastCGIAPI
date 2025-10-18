@@ -5,6 +5,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <utility>
 #include <sys/utsname.h>
 #ifndef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
@@ -17,7 +18,7 @@
 
 extern char **environ;
 
-FastCGIAPI::FastCGIAPI(json configurationRoot, mutex *fcgiAcceptMutex) { init(configurationRoot, fcgiAcceptMutex); }
+FastCGIAPI::FastCGIAPI(const json& configurationRoot, mutex *fcgiAcceptMutex) { init(configurationRoot, fcgiAcceptMutex); }
 
 FastCGIAPI::~FastCGIAPI() = default;
 
@@ -66,7 +67,7 @@ string FastCGIAPI::unescape(const string &url)
 	return buffer;
 }
 
-void FastCGIAPI::init(json configurationRoot, mutex *fcgiAcceptMutex)
+void FastCGIAPI::init(const json &configurationRoot, mutex *fcgiAcceptMutex)
 {
 	_shutdown = false;
 	// _configurationRoot = configurationRoot;
@@ -75,7 +76,7 @@ void FastCGIAPI::init(json configurationRoot, mutex *fcgiAcceptMutex)
 	_fcgxFinishDone = false;
 
 	{
-		struct utsname unUtsname;
+		struct utsname unUtsname{};
 		if (uname(&unUtsname) != -1)
 			_hostName = unUtsname.nodename;
 	}
@@ -195,7 +196,7 @@ int FastCGIAPI::operator()()
 				{
 					if ((it = requestDetails.find("CONTENT_LENGTH")) != requestDetails.end())
 					{
-						if (it->second != "")
+						if (!it->second.empty())
 						{
 							contentLength = stol(it->second);
 							if (contentLength > _maxAPIContentLength)
@@ -304,7 +305,7 @@ int FastCGIAPI::operator()()
 
 				string usernameAndPasswordBase64 = it->second.substr(authorizationPrefix.length());
 				string usernameAndPassword = base64_decode(usernameAndPasswordBase64);
-				size_t userNameSeparator = usernameAndPassword.find(":");
+				size_t userNameSeparator = usernameAndPassword.find(':');
 				if (userNameSeparator == string::npos)
 				{
 					SPDLOG_ERROR(
@@ -400,12 +401,8 @@ int FastCGIAPI::operator()()
 
 			bool responseBodyCompressed = false;
 			{
-				unordered_map<string, string>::iterator it;
-
 				if ((it = requestDetails.find("HTTP_X_RESPONSEBODYCOMPRESSED")) != requestDetails.end() && it->second == "true")
-				{
 					responseBodyCompressed = true;
-				}
 			}
 
 			manageRequestAndResponse(
@@ -488,7 +485,7 @@ int FastCGIAPI::operator()()
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
 
-bool FastCGIAPI::basicAuthenticationRequired(string requestURI, unordered_map<string, string> queryParameters)
+bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const unordered_map<string, string>& queryParameters)
 {
 	bool basicAuthenticationRequired = true;
 
@@ -516,8 +513,8 @@ bool FastCGIAPI::basicAuthenticationRequired(string requestURI, unordered_map<st
 
 void FastCGIAPI::sendSuccess(
 	string sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, string requestURI, string requestMethod,
-	int htmlResponseCode, string responseBody, string contentType, string cookieName, string cookieValue, string cookiePath, bool enableCorsGETHeader,
-	string originHeader
+	int htmlResponseCode, string responseBody, string contentType, string cookieName, string cookieValue, const string& cookiePath, bool enableCorsGETHeader,
+	const string& originHeader
 )
 {
 	if (_fcgxFinishDone)
@@ -545,20 +542,20 @@ void FastCGIAPI::sendSuccess(
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode, getHtmlStandardMessage(htmlResponseCode), endLine);
 
 	string localContentType;
-	if (responseBody != "")
+	if (!responseBody.empty())
 	{
-		if (contentType == "")
+		if (contentType.empty())
 			localContentType = std::format("Content-Type: application/json; charset=utf-8{}", endLine);
 		else
 			localContentType = std::format("{}{}", contentType, endLine);
 	}
 
 	string cookieHeader;
-	if (cookieName != "" && cookieValue != "")
+	if (!cookieName.empty() && !cookieValue.empty())
 	{
 		cookieHeader = std::format("Set-Cookie: {}={}", cookieName, cookieValue);
 
-		if (cookiePath != "")
+		if (!cookiePath.empty())
 			cookieHeader += ("; Path=" + cookiePath);
 
 		cookieHeader += endLine;
@@ -568,7 +565,7 @@ void FastCGIAPI::sendSuccess(
 	if (enableCorsGETHeader)
 	{
 		string origin = "*";
-		if (originHeader != "")
+		if (!originHeader.empty())
 			origin = originHeader;
 
 		corsGETHeader = std::format(
@@ -587,7 +584,7 @@ void FastCGIAPI::sendSuccess(
 	{
 		string compressedResponseBody = Compressor::compress_string(responseBody);
 
-		long contentLength = compressedResponseBody.size();
+		unsigned long contentLength = compressedResponseBody.size();
 
 		string headResponse = std::format(
 			"{}"
@@ -597,7 +594,8 @@ void FastCGIAPI::sendSuccess(
 			"Content-Length: {}{}"
 			"X-CompressedBody: true{}"
 			"{}",
-			httpStatus, localContentType, cookieHeader, corsGETHeader, contentLength, endLine, endLine, endLine
+			httpStatus, localContentType, cookieHeader, corsGETHeader, contentLength,
+			endLine, endLine, endLine
 		);
 
 		FCGX_FPrintF(request.out, headResponse.c_str());
@@ -624,10 +622,10 @@ void FastCGIAPI::sendSuccess(
 		// 2020-02-08: content length has to be calculated before the substitution
 		// from % to %% because for FCGX_FPrintF (below used) %% is just one
 		// character
-		long contentLength = responseBody.length();
+		unsigned long contentLength = responseBody.length();
 
 		// responseBody cannot have the '%' char because FCGX_FPrintF will not work
-		if (responseBody.find("%") != string::npos)
+		if (responseBody.find('%') != string::npos)
 		{
 			string toBeSearched = "%";
 			string replacedWith = "%%";
@@ -704,7 +702,7 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, string locationURL, bool pe
 		"Location: {}{}",
 		htmlResponseCode, getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine
 	);
-	if (contentType != "")
+	if (!contentType.empty())
 		completeHttpResponse += std::format("Content-Type: {}{}{}", contentType, endLine, endLine);
 	else
 		completeHttpResponse += endLine;
@@ -793,11 +791,11 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, string r
 
 	string endLine = "\r\n";
 
-	long contentLength;
+	unsigned long contentLength;
 
 	// string responseBody;
 	// errorMessage cannot have the '%' char because FCGX_FPrintF will not work
-	if (responseBody.find("%") != string::npos)
+	if (responseBody.find('%') != string::npos)
 	{
 		// json temporaryResponseBodyRoot;
 		// temporaryResponseBodyRoot["status"] = to_string(htmlResponseCode);
@@ -933,27 +931,27 @@ string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)
 	switch (htmlResponseCode)
 	{
 	case 200:
-		return string("OK");
+		return {"OK"};
 	case 201:
-		return string("Created");
+		return {"Created"};
 	case 301:
-		return string("Moved Permanently");
+		return {"Moved Permanently"};
 	case 302:
-		return string("Found");
+		return {"Found"};
 	case 307:
-		return string("Temporary Redirect");
+		return {"Temporary Redirect"};
 	case 308:
-		return string("Permanent Redirect");
+		return {"Permanent Redirect"};
 	case 403:
-		return string("Forbidden");
+		return {"Forbidden"};
 	case 400:
-		return string("Bad Request");
+		return {"Bad Request"};
 	case 401:
-		return string("Unauthorized");
+		return {"Unauthorized"};
 	case 404:
-		return string("Not Found");
+		return {"Not Found"};
 	case 500:
-		return string("Internal Server Error");
+		return {"Internal Server Error"};
 	default:
 		string errorMessage = std::format(
 			"HTTP status code not managed"
@@ -967,14 +965,14 @@ string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)
 }
 
 int32_t FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, int32_t defaultParameter, bool mandatory, bool *isParamPresent
+	const unordered_map<string, string> &queryParameters, string parameterName, int32_t defaultParameter, bool mandatory, bool *isParamPresent
 )
 {
 
 	int32_t parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -999,14 +997,14 @@ int32_t FastCGIAPI::getQueryParameter(
 }
 
 int64_t FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, int64_t defaultParameter, bool mandatory, bool *isParamPresent
+	const unordered_map<string, string> &queryParameters, string parameterName, int64_t defaultParameter, bool mandatory, bool *isParamPresent
 )
 {
 
 	int64_t parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1031,14 +1029,14 @@ int64_t FastCGIAPI::getQueryParameter(
 }
 
 bool FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, bool defaultParameter, bool mandatory, bool *isParamPresent
+	const unordered_map<string, string> &queryParameters, string parameterName, bool defaultParameter, bool mandatory, bool *isParamPresent
 )
 {
 
 	bool parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1063,14 +1061,14 @@ bool FastCGIAPI::getQueryParameter(
 }
 
 string FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, string defaultParameter, bool mandatory, bool *isParamPresent
+	const unordered_map<string, string> &queryParameters, string parameterName, string defaultParameter, bool mandatory, bool *isParamPresent
 )
 {
 
 	string parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1099,28 +1097,29 @@ string FastCGIAPI::getQueryParameter(
 			throw runtime_error(errorMessage);
 		}
 
-		parameterValue = defaultParameter;
+		parameterValue = std::move(defaultParameter);
 	}
 
 	return parameterValue;
 }
 
 string FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, const char *defaultParameter, bool mandatory, bool *isParamPresent
+	const unordered_map<string, string> &queryParameters, const string &parameterName, const char *defaultParameter, bool mandatory,
+	bool *isParamPresent
 )
 {
 	return getQueryParameter(queryParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
 }
 
 vector<int32_t> FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<int32_t> defaultParameter, bool mandatory,
+	const unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<int32_t> defaultParameter, bool mandatory,
 	bool *isParamPresent
 )
 {
 	vector<int32_t> parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1144,21 +1143,21 @@ vector<int32_t> FastCGIAPI::getQueryParameter(
 			throw runtime_error(errorMessage);
 		}
 
-		parameterValue = defaultParameter;
+		parameterValue = std::move(defaultParameter);
 	}
 
 	return parameterValue;
 }
 
 vector<int64_t> FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<int64_t> defaultParameter, bool mandatory,
+	const unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<int64_t> defaultParameter, bool mandatory,
 	bool *isParamPresent
 )
 {
 	vector<int64_t> parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1182,21 +1181,21 @@ vector<int64_t> FastCGIAPI::getQueryParameter(
 			throw runtime_error(errorMessage);
 		}
 
-		parameterValue = defaultParameter;
+		parameterValue = std::move(defaultParameter);
 	}
 
 	return parameterValue;
 }
 
 vector<string> FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<string> defaultParameter, bool mandatory,
+	const unordered_map<string, string> &queryParameters, string parameterName, char delim, vector<string> defaultParameter, bool mandatory,
 	bool *isParamPresent
 )
 {
 	vector<string> parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1220,21 +1219,21 @@ vector<string> FastCGIAPI::getQueryParameter(
 			throw runtime_error(errorMessage);
 		}
 
-		parameterValue = defaultParameter;
+		parameterValue = std::move(defaultParameter);
 	}
 
 	return parameterValue;
 }
 
 set<string> FastCGIAPI::getQueryParameter(
-	unordered_map<string, string> &queryParameters, string parameterName, char delim, set<string> defaultParameter, bool mandatory,
+	const unordered_map<string, string> &queryParameters, string parameterName, char delim, set<string> defaultParameter, bool mandatory,
 	bool *isParamPresent
 )
 {
 	set<string> parameterValue;
 
 	auto it = queryParameters.find(parameterName);
-	if (it != queryParameters.end() && it->second != "")
+	if (it != queryParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1258,7 +1257,7 @@ set<string> FastCGIAPI::getQueryParameter(
 			throw runtime_error(errorMessage);
 		}
 
-		parameterValue = defaultParameter;
+		parameterValue = std::move(defaultParameter);
 	}
 
 	return parameterValue;
@@ -1273,7 +1272,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<s
 	{
 		string environmentKeyValue = *envp;
 
-		if ((valueIndex = environmentKeyValue.find("=")) == string::npos)
+		if ((valueIndex = environmentKeyValue.find('=')) == string::npos)
 		{
 			SPDLOG_ERROR(
 				"Unexpected environment variable"
@@ -1304,7 +1303,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<s
 	}
 }
 
-void FastCGIAPI::fillQueryString(string queryString, unordered_map<string, string> &queryParameters)
+void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string, string> &queryParameters)
 {
 
 	stringstream ss(queryString);
@@ -1316,7 +1315,7 @@ void FastCGIAPI::fillQueryString(string queryString, unordered_map<string, strin
 		{
 			size_t keySeparator;
 
-			if ((keySeparator = token.find("=")) == string::npos)
+			if ((keySeparator = token.find('=')) == string::npos)
 			{
 				SPDLOG_ERROR(
 					"Wrong query parameter format"
@@ -1370,7 +1369,7 @@ json FastCGIAPI::loadConfigurationFile(const char *configurationPathName)
 
 // #define BOOTSERVICE_DEBUG_LOG
 
-json FastCGIAPI::loadConfigurationFile(string configurationPathName, string environmentPrefix)
+json FastCGIAPI::loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix)
 {
 
 #ifdef BOOTSERVICE_DEBUG_LOG
@@ -1383,7 +1382,7 @@ json FastCGIAPI::loadConfigurationFile(string configurationPathName, string envi
 		ifstream configurationFile(configurationPathName, ifstream::binary);
 		stringstream buffer;
 		buffer << configurationFile.rdbuf();
-		if (environmentPrefix == "")
+		if (environmentPrefix.empty())
 			sConfigurationFile = buffer.str();
 		else
 			sConfigurationFile = FastCGIAPI::applyEnvironmentToConfiguration(buffer.str(), environmentPrefix);
@@ -1399,7 +1398,7 @@ json FastCGIAPI::loadConfigurationFile(string configurationPathName, string envi
 	return configurationRoot;
 }
 
-string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, string environmentPrefix)
+string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix)
 {
 	char **s = environ;
 
@@ -1416,14 +1415,14 @@ string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, string 
 #endif
 		if (envVariable.starts_with(environmentPrefix))
 		{
-			size_t endOfVarName = envVariable.find("=");
+			size_t endOfVarName = envVariable.find('=');
 			if (endOfVarName == string::npos)
 				continue;
 
 			envNumber++;
 
 			// sarebbe \$\{ZORAC_SOLR_PWD\}
-			string envLabel = std::format("\\$\\{{{}\\}}", envVariable.substr(0, endOfVarName));
+			string envLabel = std::format(R"(\$\{{{}\}})", envVariable.substr(0, endOfVarName));
 			string envValue = envVariable.substr(endOfVarName + 1);
 #ifdef BOOTSERVICE_DEBUG_LOG
 			of << "ENV " << envLabel << ": " << envValue << endl;

@@ -33,11 +33,11 @@ include_directories("${SPDLOG_INCLUDE_DIR}")
 include_directories("${CURLWRAPPER_INCLUDE_DIR}")
 include_directories("${JSONUTILS_INCLUDE_DIR}")
 if(APPLE)
-  include_directories("${FCGI_INCLUDE_DIR}/include")
+  include_directories("${FCGI_INCLUDE_DIR}")
 endif()
 
 if(APPLE)
-  link_directories("${FCGI_INCLUDE_DIR}/lib")
+  link_directories("${FCGI_LIB_DIR}")
 	link_directories("${CURLWRAPPER_LIB_DIR}")
 endif()
 
