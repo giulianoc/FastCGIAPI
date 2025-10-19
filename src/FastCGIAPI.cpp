@@ -483,6 +483,55 @@ int FastCGIAPI::operator()()
 	return 0;
 }
 
+void FastCGIAPI::handleRequest(
+	const string &sThreadId,
+	int64_t requestIdentifier,
+	FCGX_Request &request,
+	const string& requestURI,
+	const string& requestMethod,
+	const string& requestBody,
+	const unordered_map<std::string, std::string> &queryParameters)
+{
+	bool isParamPresent;
+	const string method = getQueryParameter(queryParameters, "method", "", false, &isParamPresent);
+	if (!isParamPresent)
+	{
+		string errorMessage = string("The 'method' parameter is not found");
+		SPDLOG_ERROR(errorMessage);
+
+		int htmlResponseCode = 500;
+		json responseBodyRoot;
+		responseBodyRoot["status"] = to_string(htmlResponseCode);
+		responseBodyRoot["error"] = errorMessage;
+		sendError(request, htmlResponseCode, JSONUtils::toString(responseBodyRoot));
+
+		throw runtime_error(errorMessage);
+	}
+
+	auto handlerIt = _handlers.find(method);
+	if (handlerIt == _handlers.end())
+	{
+		string errorMessage = std::format(
+			"No API is matched"
+			", requestURI: {}"
+			", method: {}"
+			", requestMethod: {}",
+			requestURI, method, requestMethod
+		);
+		SPDLOG_ERROR(errorMessage);
+
+		int htmlResponseCode = 500;
+		json responseBodyRoot;
+		responseBodyRoot["status"] = to_string(htmlResponseCode);
+		responseBodyRoot["error"] = errorMessage;
+		sendError(request, htmlResponseCode, JSONUtils::toString(responseBodyRoot));
+
+		throw runtime_error(errorMessage);
+	}
+
+	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, queryParameters);
+}
+
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
 
 bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const unordered_map<string, string>& queryParameters)
@@ -1339,33 +1388,6 @@ void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string
 		}
 	}
 }
-
-/*
-json FastCGIAPI::loadConfigurationFile(const char *configurationPathName)
-{
-	try
-	{
-		ifstream configurationFile(configurationPathName, ifstream::binary);
-
-		return json::parse(
-			configurationFile,
-			nullptr, // callback
-			true,	 // allow exceptions
-			true	 // ignore_comments
-		);
-	}
-	catch (...)
-	{
-		string errorMessage = std::format(
-			"wrong json configuration format"
-			", configurationPathName: {}",
-			configurationPathName
-		);
-
-		throw runtime_error(errorMessage);
-	}
-}
-*/
 
 // #define BOOTSERVICE_DEBUG_LOG
 

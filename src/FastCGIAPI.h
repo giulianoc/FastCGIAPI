@@ -16,6 +16,7 @@ using json = nlohmann::json;
 using ordered_json = nlohmann::ordered_json;
 using namespace nlohmann::literals;
 
+
 struct CheckAuthorizationFailed : public exception
 {
 	char const *what() const throw() { return "Wrong Basic Authentication present into the Request"; };
@@ -24,6 +25,16 @@ struct CheckAuthorizationFailed : public exception
 class FastCGIAPI
 {
   public:
+	using Handler = function<void(
+		const string&, // sThreadId
+		int64_t, // requestIdentifier
+		FCGX_Request &, // request
+		const string&, // requestURI
+		const string&, // requestMethod
+		const string&, // requestBody
+		const unordered_map<string, string>& // queryParameters
+	)>;
+
 	FastCGIAPI(const json& configuration, mutex *fcgiAcceptMutex);
 
 	void init(const json &configuration, mutex *fcgiAcceptMutex);
@@ -33,7 +44,7 @@ class FastCGIAPI
 	static string escape(const string &url);
 	static string unescape(const string &url);
 
-	void loadConfiguration(json configurationRoot);
+	virtual void loadConfiguration(json configurationRoot);
 
 	int operator()();
 
@@ -54,11 +65,35 @@ class FastCGIAPI
 	int64_t _maxAPIContentLength{};
 	mutex *_fcgiAcceptMutex{};
 
+	unordered_map<std::string, Handler> _handlers;
+
 	virtual void manageRequestAndResponse(
 		string sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, string requestURI, string requestMethod,
 		unordered_map<string, string> queryParameters, bool authorizationPresent, string userName, string password, unsigned long contentLength,
 		string requestBody, unordered_map<string, string> &requestDetails
 	) = 0;
+
+	virtual void handleRequest(const string &sThreadId,
+	   int64_t requestIdentifier,
+	   FCGX_Request &request,
+	   const string& requestURI,
+	   const string& requestMethod,
+	   const string& requestBody,
+	   const unordered_map<std::string, std::string> &queryParameters);
+
+	template <typename Derived, typename Method>
+	void registerHandler(const std::string& name, Method method)
+	{
+		_handlers[name] = [this, method](
+			const std::string& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
+			const std::string& requestURI, const std::string& requestMethod,
+			const std::string& requestBody, const std::unordered_map<std::string, std::string>& queryParameters)
+		{
+			// Chiama il metodo membro specificato
+			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request,
+							requestURI, requestMethod, requestBody, queryParameters);
+		};
+	}
 
 	virtual void checkAuthorization(string sThreadId, string userName, string password) = 0;
 
