@@ -961,7 +961,7 @@ getHtmlStandardMessage(htmlResponseCode), endLine);
 }
 */
 
-string FastCGIAPI::getClientIPAddress(unordered_map<string, string> &requestDetails)
+string FastCGIAPI::getClientIPAddress(const unordered_map<string, string> &requestDetails)
 {
 
 	string clientIPAddress;
