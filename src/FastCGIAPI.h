@@ -97,7 +97,7 @@ class FastCGIAPI
 		};
 	}
 
-	virtual void checkAuthorization(string sThreadId, string userName, string password) = 0;
+	virtual void checkAuthorization(const string& sThreadId, const string& userName, const string& password) = 0;
 
 	virtual bool basicAuthenticationRequired(const string &requestURI, const unordered_map<string, string> &queryParameters);
 
