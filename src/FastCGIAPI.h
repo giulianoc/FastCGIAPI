@@ -112,7 +112,7 @@ class FastCGIAPI
 	virtual void sendError(FCGX_Request &request, int htmlResponseCode, string errorMessage);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
-	static string getClientIPAddress(unordered_map<string, string> &requestDetails);
+	static string getClientIPAddress(const unordered_map<string, string> &requestDetails);
 
 	static int32_t getQueryParameter(
 		const unordered_map<string, string> &queryParameters, string parameterName, int32_t defaultParameter, bool mandatory,
