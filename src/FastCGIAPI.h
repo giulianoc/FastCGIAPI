@@ -292,7 +292,7 @@ class FastCGIAPI
   private:
 	static void fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails);
 
-	static void fillQueryString(const string& queryString, unordered_map<string, string> &queryParameters);
+	static void fillQueryString(const string &queryString, unordered_map<string, string> &queryParameters);
 
 	static string base64_encode(const string &in);
 

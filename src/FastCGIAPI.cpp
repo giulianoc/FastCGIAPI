@@ -184,9 +184,7 @@ int FastCGIAPI::operator()()
 			// fillEnvironmentDetails(environ, requestDetails);
 
 			{
-				unordered_map<string, string>::iterator it;
-
-				if ((it = requestDetails.find("QUERY_STRING")) != requestDetails.end())
+				if (unordered_map<string, string>::iterator it; (it = requestDetails.find("QUERY_STRING")) != requestDetails.end())
 					fillQueryString(it->second, queryParameters);
 			}
 
