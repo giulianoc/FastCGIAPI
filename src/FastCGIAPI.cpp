@@ -181,7 +181,7 @@ int FastCGIAPI::operator()()
 		try
 		{
 			fillEnvironmentDetails(request.envp, requestDetails);
-			fillEnvironmentDetails(environ, requestDetails);
+			// fillEnvironmentDetails(environ, requestDetails);
 
 			{
 				unordered_map<string, string>::iterator it;
@@ -441,7 +441,7 @@ int FastCGIAPI::operator()()
 			);
 		}
 		{
-			string method = getQueryParameter(queryParameters, "method", "", false);
+			auto method = getHeaderParameter(requestDetails, "x-api-method", "", false);
 
 			string clientIPAddress = getClientIPAddress(requestDetails);
 
@@ -490,10 +490,11 @@ void FastCGIAPI::handleRequest(
 	const string& requestURI,
 	const string& requestMethod,
 	const string& requestBody,
-	const unordered_map<std::string, std::string> &queryParameters)
+	const unordered_map<std::string, std::string>& requestDetails,
+	const unordered_map<std::string, std::string>& queryParameters)
 {
 	bool isParamPresent;
-	const string method = getQueryParameter(queryParameters, "method", "", false, &isParamPresent);
+	const string method = getHeaderParameter(requestDetails, "x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
 	{
 		string errorMessage = string("The 'method' parameter is not found");
@@ -529,7 +530,7 @@ void FastCGIAPI::handleRequest(
 		throw runtime_error(errorMessage);
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, queryParameters);
+	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, requestDetails, queryParameters);
 }
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
@@ -537,25 +538,6 @@ void FastCGIAPI::stopFastcgi() { _shutdown = true; }
 bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const unordered_map<string, string>& queryParameters)
 {
 	bool basicAuthenticationRequired = true;
-
-	/*
-	auto methodIt = queryParameters.find("method");
-	if (methodIt == queryParameters.end())
-	{
-	  string errorMessage = string("The 'method' parameter is not found");
-	  SPDLOG_ERROR(errorMessage);
-
-	  // throw runtime_error(errorMessage);
-	  return basicAuthenticationRequired;
-	}
-	string method = methodIt->second;
-
-	if (method == "status"	// often used as healthy check
-	)
-	{
-	  basicAuthenticationRequired = false;
-	}
-	*/
 
 	return basicAuthenticationRequired;
 }
@@ -1013,6 +995,7 @@ string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)
 	}
 }
 
+/*
 int32_t FastCGIAPI::getQueryParameter(
 	const unordered_map<string, string> &queryParameters, string parameterName, int32_t defaultParameter, bool mandatory, bool *isParamPresent
 )
@@ -1022,6 +1005,38 @@ int32_t FastCGIAPI::getQueryParameter(
 
 	auto it = queryParameters.find(parameterName);
 	if (it != queryParameters.end() && !it->second.empty())
+	{
+		if (isParamPresent != nullptr)
+			*isParamPresent = true;
+		parameterValue = stol(it->second);
+	}
+	else
+	{
+		if (isParamPresent != nullptr)
+			*isParamPresent = false;
+		if (mandatory)
+		{
+			string errorMessage = std::format("The {} query parameter is missing", parameterName);
+			SPDLOG_ERROR(errorMessage);
+
+			throw runtime_error(errorMessage);
+		}
+
+		parameterValue = defaultParameter;
+	}
+
+	return parameterValue;
+}
+
+
+int32_t FastCGIAPI::getMapParameter(
+	const unordered_map<string, string> &mapParameters, string parameterName, int32_t defaultParameter, bool mandatory, bool *isParamPresent
+)
+{
+	int32_t parameterValue;
+
+	auto it = mapParameters.find(parameterName);
+	if (it != mapParameters.end() && !it->second.empty())
 	{
 		if (isParamPresent != nullptr)
 			*isParamPresent = true;
@@ -1311,6 +1326,7 @@ set<string> FastCGIAPI::getQueryParameter(
 
 	return parameterValue;
 }
+*/
 
 void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails)
 {

@@ -38,14 +38,16 @@ endif()
 
 if(APPLE)
   link_directories("${FCGI_LIB_DIR}")
-	link_directories("${CURLWRAPPER_LIB_DIR}")
+  link_directories("${CURLWRAPPER_LIB_DIR}")
+  link_directories("${STRINGUTILS_LIB_DIR}")
 endif()
 
 add_library (FastCGIAPI SHARED ${SOURCES} ${HEADERS})
 
 if(APPLE)
   target_link_libraries(FastCGIAPI CurlWrapper)
-	target_link_libraries(FastCGIAPI fcgi)
+  target_link_libraries(FastCGIAPI StringUtils)
+  target_link_libraries(FastCGIAPI fcgi)
 endif()
 
 if(ZORAC)

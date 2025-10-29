@@ -2,6 +2,7 @@
 #ifndef FastCGIAPI_h
 #define FastCGIAPI_h
 
+#include "../../StringUtils/src/StringUtils.h"
 #include "fcgi_config.h"
 #include "fcgi_stdio.h"
 #include "nlohmann/json.hpp"
@@ -19,7 +20,7 @@ using namespace nlohmann::literals;
 
 struct CheckAuthorizationFailed : public exception
 {
-	char const *what() const throw() { return "Wrong Basic Authentication present into the Request"; };
+	char const *what() const throw() override { return "Wrong Basic Authentication present into the Request"; };
 };
 
 class FastCGIAPI
@@ -32,6 +33,7 @@ class FastCGIAPI
 		const string&, // requestURI
 		const string&, // requestMethod
 		const string&, // requestBody
+		const unordered_map<string, string>&, // requestDetails
 		const unordered_map<string, string>& // queryParameters
 	)>;
 
@@ -75,13 +77,11 @@ class FastCGIAPI
 		const string& requestBody, const unordered_map<string, string> &requestDetails
 	) = 0;
 
-	virtual void handleRequest(const string &sThreadId,
-	   int64_t requestIdentifier,
-	   FCGX_Request &request,
-	   const string& requestURI,
-	   const string& requestMethod,
-	   const string& requestBody,
-	   const unordered_map<std::string, std::string> &queryParameters);
+	virtual void handleRequest(
+		const string &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string &requestURI, const string &requestMethod,
+		const string &requestBody, const unordered_map<std::string, std::string> &requestDetails,
+		const unordered_map<std::string, std::string> &queryParameters
+	);
 
 	template <typename Derived, typename Method>
 	void registerHandler(const std::string& name, Method method)
@@ -89,11 +89,12 @@ class FastCGIAPI
 		_handlers[name] = [this, method](
 			const std::string& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
 			const std::string& requestURI, const std::string& requestMethod,
-			const std::string& requestBody, const std::unordered_map<std::string, std::string>& queryParameters)
+			const std::string& requestBody, const std::unordered_map<std::string, std::string>& requestDetails,
+			const std::unordered_map<std::string, std::string>& queryParameters)
 		{
 			// Chiama il metodo membro specificato
 			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request,
-							requestURI, requestMethod, requestBody, queryParameters);
+				requestURI, requestMethod, requestBody, requestDetails, queryParameters);
 		};
 	}
 
@@ -114,9 +115,13 @@ class FastCGIAPI
 
 	static string getClientIPAddress(const unordered_map<string, string> &requestDetails);
 
+	/*
 	static int32_t getQueryParameter(
 		const unordered_map<string, string> &queryParameters, string parameterName, int32_t defaultParameter, bool mandatory,
 		bool *isParamPresent = nullptr
+	);
+	static int32_t getMapParameter(
+		const unordered_map<string, string> &mapParameters, string parameterName, int32_t defaultParameter, bool mandatory, bool *isParamPresent
 	);
 	static int64_t getQueryParameter(
 		const unordered_map<string, string> &queryParameters, string parameterName, int64_t defaultParameter, bool mandatory,
@@ -150,6 +155,137 @@ class FastCGIAPI
 		const unordered_map<string, string> &queryParameters, string parameterName, char delim, set<string> defaultParameter, bool mandatory,
 		bool *isParamPresent = nullptr
 	);
+	*/
+
+
+	static string getHeaderParameter(
+		const unordered_map<string, string> &mapParameters, const string &headerName, const char *defaultParameter, bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getHeaderParameter(mapParameters, headerName, string(defaultParameter), mandatory, isParamPresent);
+	}
+
+	template <typename T>
+	static T getHeaderParameter(
+		const unordered_map<string, string> &mapParameters, string headerName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, std::format("HTTP_{}",
+			StringUtils::replaceAll(StringUtils::upperCase(headerName), "-", "_")),
+			string(defaultParameter), mandatory, isParamPresent);
+	}
+
+	static string getQueryParameter(
+		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
+	}
+
+	template <typename T>
+	static T getQueryParameter(
+		const unordered_map<string, string> &mapParameters, string parameterName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, defaultParameter, mandatory, isParamPresent);
+	}
+
+	template <typename T, template <class...> class C>
+	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
+	static C<T> getQueryParameter(
+		const unordered_map<string, string> &mapParameters, string parameterName, char delim, C<T> defaultParameter, bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, delim, defaultParameter, mandatory, isParamPresent);
+	}
+
+	static string getMapParameter(
+		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
+	}
+
+	template <typename T>
+	static T getMapParameter(
+		const unordered_map<string, string> &mapParameters, string parameterName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+	)
+	{
+		T parameterValue;
+
+		auto it = mapParameters.find(parameterName);
+		if (it != mapParameters.end() && !it->second.empty())
+		{
+			if (isParamPresent != nullptr)
+				*isParamPresent = true;
+			parameterValue = StringUtils::getValue<T>(it->second);
+		}
+		else
+		{
+			if (isParamPresent != nullptr)
+				*isParamPresent = false;
+			if (mandatory)
+			{
+				string errorMessage = std::format("The {} query parameter is missing", parameterName);
+				SPDLOG_ERROR(errorMessage);
+
+				throw runtime_error(errorMessage);
+			}
+
+			parameterValue = defaultParameter;
+		}
+
+		return parameterValue;
+	}
+
+	template <typename T, template <class...> class C>
+	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
+	static C<T> getMapParameter(
+		const unordered_map<string, string> &mapParameters, string parameterName, char delim, C<T> defaultParameter, bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		vector<T> parameterValue;
+
+		auto it = mapParameters.find(parameterName);
+		if (it != mapParameters.end() && !it->second.empty())
+		{
+			if (isParamPresent != nullptr)
+				*isParamPresent = true;
+			stringstream ss(it->second);
+			string token;
+			while (getline(ss, token, delim))
+			{
+				if (!token.empty())
+				{
+					if constexpr (is_same_v<C<T>, vector<T>>)
+						parameterValue.push_back(StringUtils::getValue<T>(token));
+					else
+						parameterValue.insert(StringUtils::getValue<T>(token));
+				}
+			}
+		}
+		else
+		{
+			if (isParamPresent != nullptr)
+				*isParamPresent = false;
+			if (mandatory)
+			{
+				string errorMessage = std::format("The {} query parameter is missing", parameterName);
+				SPDLOG_ERROR(errorMessage);
+
+				throw runtime_error(errorMessage);
+			}
+
+			parameterValue = std::move(defaultParameter);
+		}
+
+		return parameterValue;
+	}
 
 	static string getHtmlStandardMessage(int htmlResponseCode);
 
