@@ -439,7 +439,7 @@ int FastCGIAPI::operator()()
 			);
 		}
 		{
-			auto method = getHeaderParameter(requestDetails, "x-api-method", "", false);
+			auto method = getQueryParameter(queryParameters, "x-api-method", "", false);
 
 			string clientIPAddress = getClientIPAddress(requestDetails);
 
@@ -492,10 +492,10 @@ void FastCGIAPI::handleRequest(
 	const unordered_map<std::string, std::string>& queryParameters)
 {
 	bool isParamPresent;
-	const string method = getHeaderParameter(requestDetails, "x-api-method", "", false, &isParamPresent);
+	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
 	{
-		string errorMessage = string("The 'method' parameter is not found");
+		string errorMessage = string("The 'x-api-method' parameter is not found");
 		SPDLOG_ERROR(errorMessage);
 
 		int htmlResponseCode = 500;
