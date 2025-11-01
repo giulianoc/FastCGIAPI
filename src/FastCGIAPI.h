@@ -117,7 +117,21 @@ class FastCGIAPI
 		{
 			if (isParamPresent != nullptr)
 				*isParamPresent = true;
-			parameterValue = StringUtils::getValue<T>(it->second);
+			if constexpr (std::is_same_v<T, std::string>)
+			{
+				// 2021-01-07: Remark: we have FIRST to replace + in space and then apply
+				// unescape
+				//	That  because if we have really a + char (%2B into the string), and we
+				// do the replace 	after unescape, this char will be changed to space and we
+				// do not want it
+				string plus = "+";
+				string plusDecoded = " ";
+				string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
+
+				return unescape(firstDecoding);
+			}
+			else
+				parameterValue = StringUtils::getValue<T>(it->second);
 		}
 		else
 		{
