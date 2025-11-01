@@ -7,11 +7,6 @@
 #include <sstream>
 #include <utility>
 #include <sys/utsname.h>
-#ifndef SPDLOG_ACTIVE_LEVEL
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-#endif
-#include "JSONUtils.h"
-#include "spdlog/spdlog.h"
 #include <curl/curl.h>
 //
 #include "FastCGIAPI.h" // has to be the last one otherwise errors...

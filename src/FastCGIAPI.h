@@ -1,21 +1,18 @@
 
-#ifndef FastCGIAPI_h
-#define FastCGIAPI_h
+#pragma once
 
-#include "../../StringUtils/src/StringUtils.h"
-#include "fcgi_config.h"
-#include "fcgi_stdio.h"
-#include "nlohmann/json.hpp"
 #include <set>
-#include <stdlib.h>
 #include <unordered_map>
 #include <vector>
+#include "StringUtils.h"
+#ifndef SPDLOG_ACTIVE_LEVEL
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#endif
+#include "spdlog/spdlog.h"
+#include "JSONUtils.h"
+#include "fcgi_stdio.h"
 
 using namespace std;
-
-using json = nlohmann::json;
-using ordered_json = nlohmann::ordered_json;
-using namespace nlohmann::literals;
 
 
 struct CheckAuthorizationFailed : public exception
@@ -147,7 +144,7 @@ class FastCGIAPI
 		bool *isParamPresent = nullptr
 	)
 	{
-		vector<T> parameterValue;
+		C<T> parameterValue;
 
 		auto it = mapParameters.find(parameterName);
 		if (it != mapParameters.end() && !it->second.empty())
@@ -255,5 +252,3 @@ class FastCGIAPI
 
 	static string base64_decode(const string &in);
 };
-
-#endif
