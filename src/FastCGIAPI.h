@@ -126,7 +126,7 @@ class FastCGIAPI
 				// do not want it
 				string plus = "+";
 				string plusDecoded = " ";
-				string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
+				const string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
 
 				return unescape(firstDecoding);
 			}
@@ -145,7 +145,7 @@ class FastCGIAPI
 				throw runtime_error(errorMessage);
 			}
 
-			parameterValue = defaultParameter;
+			parameterValue = std::move(defaultParameter);
 		}
 
 		return parameterValue;
