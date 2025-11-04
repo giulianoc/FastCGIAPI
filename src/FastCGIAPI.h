@@ -148,7 +148,7 @@ class FastCGIAPI
 				throw runtime_error(errorMessage);
 			}
 
-			parameterValue = defaultParameter;
+			parameterValue = std::move(defaultParameter);
 		}
 
 		return parameterValue;
