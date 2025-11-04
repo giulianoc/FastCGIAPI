@@ -477,12 +477,12 @@ int FastCGIAPI::operator()()
 }
 
 void FastCGIAPI::handleRequest(
-	const string &sThreadId,
+	const string_view &sThreadId,
 	int64_t requestIdentifier,
 	FCGX_Request &request,
-	const string& requestURI,
-	const string& requestMethod,
-	const string& requestBody,
+	const string_view& requestURI,
+	const string_view& requestMethod,
+	const string_view& requestBody,
 	const unordered_map<std::string, std::string>& requestDetails,
 	const unordered_map<std::string, std::string>& queryParameters)
 {
@@ -536,9 +536,9 @@ bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const un
 }
 
 void FastCGIAPI::sendSuccess(
-	string sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, string requestURI, string requestMethod,
-	int htmlResponseCode, string responseBody, string contentType, string cookieName, string cookieValue, const string& cookiePath, bool enableCorsGETHeader,
-	const string& originHeader
+	const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
+	const string_view& requestMethod, int htmlResponseCode, const string_view& responseBody, const string_view& contentType, const string_view& cookieName,
+	const string_view& cookieValue, const string_view& cookiePath, bool enableCorsGETHeader, const string_view& originHeader
 )
 {
 	if (_fcgxFinishDone)
@@ -580,7 +580,7 @@ void FastCGIAPI::sendSuccess(
 		cookieHeader = std::format("Set-Cookie: {}={}", cookieName, cookieValue);
 
 		if (!cookiePath.empty())
-			cookieHeader += ("; Path=" + cookiePath);
+			cookieHeader += (std::format("; Path={}", cookiePath));
 
 		cookieHeader += endLine;
 	}
@@ -653,7 +653,7 @@ void FastCGIAPI::sendSuccess(
 		{
 			string toBeSearched = "%";
 			string replacedWith = "%%";
-			string newResponseBody = regex_replace(responseBody, regex(toBeSearched), replacedWith);
+			string newResponseBody = StringUtils::replaceAll(responseBody, toBeSearched, replacedWith);
 
 			completeHttpResponse = std::format(
 				"{}"
@@ -703,7 +703,7 @@ void FastCGIAPI::sendSuccess(
 	_fcgxFinishDone = true;
 }
 
-void FastCGIAPI::sendRedirect(FCGX_Request &request, string locationURL, bool permanently, string contentType)
+void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& locationURL, bool permanently, const string_view& contentType)
 {
 	if (_fcgxFinishDone)
 	{
@@ -799,7 +799,7 @@ void FastCGIAPI::sendHeadSuccess(int htmlResponseCode, unsigned long fileSize)
 	);
 }
 
-void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, string responseBody)
+void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const string_view& responseBody)
 {
 	if (_fcgxFinishDone)
 	{
@@ -816,39 +816,25 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, string r
 	string endLine = "\r\n";
 
 	unsigned long contentLength;
+	string localResponseBody;
 
 	// string responseBody;
 	// errorMessage cannot have the '%' char because FCGX_FPrintF will not work
 	if (responseBody.find('%') != string::npos)
 	{
-		// json temporaryResponseBodyRoot;
-		// temporaryResponseBodyRoot["status"] = to_string(htmlResponseCode);
-		// temporaryResponseBodyRoot["error"] = errorMessage;
-
-		// string temporaryResponseBody =
-		// JSONUtils::toString(temporaryResponseBodyRoot);
-
 		// 2020-02-08: content length has to be calculated before the substitution
 		// from % to %% because for FCGX_FPrintF (below used) %% is just one
 		// character
 		contentLength = responseBody.length();
 
-		string toBeSearched = "%";
-		string replacedWith = "%%";
-		responseBody = regex_replace(responseBody, regex(toBeSearched), replacedWith);
+		const string toBeSearched = "%";
+		const string replacedWith = "%%";
+		localResponseBody = StringUtils::replaceAll(responseBody, toBeSearched, replacedWith);
 	}
 	else
 	{
-		// json responseBodyRoot;
-		// responseBodyRoot["status"] = to_string(htmlResponseCode);
-		// responseBodyRoot["error"] = errorMessage;
-
-		// responseBody = JSONUtils::toString(responseBodyRoot);
-
-		// 2020-02-08: content length has to be calculated before the substitution
-		// from % to %% because for FCGX_FPrintF (below used) %% is just one
-		// character
 		contentLength = responseBody.length();
+		localResponseBody = responseBody;
 	}
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode, getHtmlStandardMessage(htmlResponseCode), endLine);
@@ -859,7 +845,7 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, string r
 		"Content-Length: {}{}"
 		"{}"
 		"{}",
-		httpStatus, endLine, contentLength, endLine, endLine, responseBody
+		httpStatus, endLine, contentLength, endLine, endLine, localResponseBody
 	);
 
 	SPDLOG_INFO(
@@ -873,68 +859,6 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, string r
 	FCGX_Finish_r(&request);
 	_fcgxFinishDone = true;
 }
-
-/*
-void FastCGIAPI::sendError(int htmlResponseCode, string errorMessage)
-{
-  string endLine = "\r\n";
-
-  long contentLength;
-
-  string responseBody;
-  // errorMessage cannot have the '%' char because FCGX_FPrintF will not work
-  if (errorMessage.find("%") != string::npos)
-  {
-	json temporaryResponseBodyRoot;
-	temporaryResponseBodyRoot["status"] = to_string(htmlResponseCode);
-	temporaryResponseBodyRoot["error"] = errorMessage;
-
-	string temporaryResponseBody =
-JSONUtils::toString(temporaryResponseBodyRoot);
-
-	// 2020-02-08: content length has to be calculated before the substitution
-from % to %%
-	// because for FCGX_FPrintF (below used) %% is just one character
-	contentLength = temporaryResponseBody.length();
-
-	string toBeSearched = "%";
-	string replacedWith = "%%";
-	responseBody = regex_replace(temporaryResponseBody, regex(toBeSearched),
-replacedWith);
-  }
-  else
-  {
-	json responseBodyRoot;
-	responseBodyRoot["status"] = to_string(htmlResponseCode);
-	responseBodyRoot["error"] = errorMessage;
-
-	responseBody = JSONUtils::toString(responseBodyRoot);
-
-	// 2020-02-08: content length has to be calculated before the substitution
-from % to %%
-	// because for FCGX_FPrintF (below used) %% is just one character
-	contentLength = responseBody.length();
-  }
-
-  string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
-getHtmlStandardMessage(htmlResponseCode), endLine);
-
-  string completeHttpResponse = std::format(
-	"{}"
-	"Content-Type: application/json; charset=utf-8{}"
-	"Content-Length: {}{}"
-	"{}"
-	"{}",
-	httpStatus, endLine, contentLength, endLine, endLine, responseBody
-  );
-
-  SPDLOG_INFO(
-	"HTTP Error"
-	", response: {}",
-	completeHttpResponse
-  );
-}
-*/
 
 string FastCGIAPI::getClientIPAddress(const unordered_map<string, string> &requestDetails)
 {
@@ -966,12 +890,12 @@ string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)
 		return {"Temporary Redirect"};
 	case 308:
 		return {"Permanent Redirect"};
-	case 403:
-		return {"Forbidden"};
 	case 400:
 		return {"Bad Request"};
 	case 401:
 		return {"Unauthorized"};
+	case 403:
+		return {"Forbidden"};
 	case 404:
 		return {"Not Found"};
 	case 500:

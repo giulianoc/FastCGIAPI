@@ -24,12 +24,12 @@ class FastCGIAPI
 {
   public:
 	using Handler = function<void(
-		const string&, // sThreadId
+		const string_view&, // sThreadId
 		int64_t, // requestIdentifier
 		FCGX_Request &, // request
-		const string&, // requestURI
-		const string&, // requestMethod
-		const string&, // requestBody
+		const string_view&, // requestURI
+		const string_view&, // requestMethod
+		const string_view&, // requestBody
 		const unordered_map<string, string>&, // requestDetails
 		const unordered_map<string, string>& // queryParameters
 	)>;
@@ -53,8 +53,8 @@ class FastCGIAPI
 	static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
 	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
-		static string getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, const string &headerName, const char *defaultParameter, bool mandatory,
+	static string getHeaderParameter(
+		const unordered_map<string, string> &mapParameters, const string& headerName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -63,7 +63,8 @@ class FastCGIAPI
 
 	template <typename T>
 	static T getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, string headerName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+		const unordered_map<string, string> &mapParameters, const string& headerName, T defaultParameter, const bool mandatory,
+		bool *isParamPresent = nullptr
 	)
 	{
 		return getMapParameter(mapParameters, std::format("HTTP_{}",
@@ -72,7 +73,7 @@ class FastCGIAPI
 	}
 
 	static string getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -81,7 +82,8 @@ class FastCGIAPI
 
 	template <typename T>
 	static T getQueryParameter(
-		const unordered_map<string, string> &mapParameters, string parameterName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory,
+		bool *isParamPresent = nullptr
 	)
 	{
 		return getMapParameter(mapParameters, parameterName, defaultParameter, mandatory, isParamPresent);
@@ -90,7 +92,7 @@ class FastCGIAPI
 	template <typename T, template <class...> class C>
 	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
 	static C<T> getQueryParameter(
-		const unordered_map<string, string> &mapParameters, string parameterName, char delim, C<T> defaultParameter, bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -98,7 +100,7 @@ class FastCGIAPI
 	}
 
 	static string getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -107,7 +109,8 @@ class FastCGIAPI
 
 	template <typename T>
 	static T getMapParameter(
-		const unordered_map<string, string> &mapParameters, string parameterName, T defaultParameter, bool mandatory, bool *isParamPresent = nullptr
+		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory,
+		bool *isParamPresent = nullptr
 	)
 	{
 		T parameterValue;
@@ -126,7 +129,7 @@ class FastCGIAPI
 				// do not want it
 				string plus = "+";
 				string plusDecoded = " ";
-				string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
+				const string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
 
 				return unescape(firstDecoding);
 			}
@@ -154,7 +157,7 @@ class FastCGIAPI
 	template <typename T, template <class...> class C>
 	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
 	static C<T> getMapParameter(
-		const unordered_map<string, string> &mapParameters, string parameterName, char delim, C<T> defaultParameter, bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -210,16 +213,16 @@ class FastCGIAPI
 	unordered_map<std::string, Handler> _handlers;
 
 	virtual void manageRequestAndResponse(
-		const string& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request,
-		const string& requestURI, const string& requestMethod,
+		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request,
+		const string_view& requestURI, const string_view& requestMethod,
 		const unordered_map<string, string>& queryParameters,
-		bool basicAuthenticationPresent, const string& userName, const string& password, unsigned long contentLength,
-		const string& requestBody, const unordered_map<string, string> &requestDetails
+		bool basicAuthenticationPresent, const string_view& userName, const string_view& password, unsigned long contentLength,
+		const string_view& requestBody, const unordered_map<string, string> &requestDetails
 	) = 0;
 
 	virtual void handleRequest(
-		const string &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string &requestURI, const string &requestMethod,
-		const string &requestBody, const unordered_map<std::string, std::string> &requestDetails,
+		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string_view &requestURI,
+		const string_view &requestMethod, const string_view &requestBody, const unordered_map<std::string, std::string> &requestDetails,
 		const unordered_map<std::string, std::string> &queryParameters
 	);
 
@@ -243,14 +246,15 @@ class FastCGIAPI
 	virtual bool basicAuthenticationRequired(const string &requestURI, const unordered_map<string, string> &queryParameters);
 
 	void sendSuccess(
-		string sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, string requestURI, string requestMethod,
-		int htmlResponseCode, string responseBody = "", string contentType = "", string cookieName = "", string cookieValue = "",
-		const string& cookiePath= "", bool enableCorsGETHeader = false, const string& originHeader = ""
+		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
+		const string_view& requestMethod, int htmlResponseCode, const string_view& responseBody = "", const string_view& contentType = "",
+		const string_view& cookieName = "", const string_view& cookieValue = "",
+		const string_view& cookiePath= "", bool enableCorsGETHeader = false, const string_view& originHeader = ""
 	);
-	void sendRedirect(FCGX_Request &request, string locationURL, bool permanently, string contentType = "");
+	void sendRedirect(FCGX_Request &request, const string_view& locationURL, bool permanently, const string_view& contentType = "");
 	void sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, unsigned long fileSize);
 	static void sendHeadSuccess(int htmlResponseCode, unsigned long fileSize);
-	virtual void sendError(FCGX_Request &request, int htmlResponseCode, string errorMessage);
+	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const string_view& errorMessage);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
 	static string getClientIPAddress(const unordered_map<string, string> &requestDetails);
