@@ -30,6 +30,7 @@ class FastCGIAPI
 		const string_view&, // requestURI
 		const string_view&, // requestMethod
 		const string_view&, // requestBody
+		bool, // responseBodyCompressed
 		const unordered_map<string, string>&, // requestDetails
 		const unordered_map<string, string>& // queryParameters
 	)>;
@@ -222,7 +223,8 @@ class FastCGIAPI
 
 	virtual void handleRequest(
 		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string_view &requestURI,
-		const string_view &requestMethod, const string_view &requestBody, const unordered_map<std::string, std::string> &requestDetails,
+		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
+		const unordered_map<std::string, std::string> &requestDetails,
 		const unordered_map<std::string, std::string> &queryParameters
 	);
 

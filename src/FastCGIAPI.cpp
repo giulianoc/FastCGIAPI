@@ -483,6 +483,7 @@ void FastCGIAPI::handleRequest(
 	const string_view& requestURI,
 	const string_view& requestMethod,
 	const string_view& requestBody,
+	bool responseBodyCompressed,
 	const unordered_map<std::string, std::string>& requestDetails,
 	const unordered_map<std::string, std::string>& queryParameters)
 {
@@ -523,7 +524,8 @@ void FastCGIAPI::handleRequest(
 		throw runtime_error(errorMessage);
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, requestDetails, queryParameters);
+	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, responseBodyCompressed,
+		requestDetails, queryParameters);
 }
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
