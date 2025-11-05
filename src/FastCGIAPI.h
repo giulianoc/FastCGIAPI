@@ -28,6 +28,8 @@ class FastCGIAPI
 	public:
 		string userName;
 		string password;
+
+		virtual ~AuthorizationDetails() = default;
 	};
 
 	using Handler = function<void(
