@@ -35,6 +35,27 @@ class FastCGIAPI
 		const unordered_map<string, string>& // queryParameters
 	)>;
 
+	class AuthorizationDetails
+	{
+	  public:
+		string userName;
+		string password;
+	};
+
+	virtual void stopFastcgi();
+
+	int operator()();
+
+	static string getMapParameter(
+		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
+	}
+
+protected:
+
 	FastCGIAPI(const json& configuration, mutex *fcgiAcceptMutex);
 
 	void init(const json &configuration, mutex *fcgiAcceptMutex);
@@ -45,10 +66,6 @@ class FastCGIAPI
 	static string unescape(const string &url);
 
 	virtual void loadConfiguration(json configurationRoot);
-
-	int operator()();
-
-	virtual void stopFastcgi();
 
 	// static json loadConfigurationFile(const char *configurationPathName);
 	static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
@@ -98,14 +115,6 @@ class FastCGIAPI
 	)
 	{
 		return getMapParameter(mapParameters, parameterName, delim, defaultParameter, mandatory, isParamPresent);
-	}
-
-	static string getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
 	}
 
 	template <typename T>
@@ -244,7 +253,7 @@ class FastCGIAPI
 		};
 	}
 
-	virtual void checkAuthorization(const string& sThreadId, const string& userName, const string& password) = 0;
+	virtual shared_ptr<AuthorizationDetails> checkAuthorization(const string_view& sThreadId, const string_view& userName, const string_view& password) = 0;
 
 	virtual bool basicAuthenticationRequired(const string &requestURI, const unordered_map<string, string> &queryParameters);
 
