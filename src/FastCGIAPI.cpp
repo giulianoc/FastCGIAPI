@@ -360,8 +360,8 @@ int FastCGIAPI::operator()()
 			}
 
 			manageRequestAndResponse(
-				sThreadId, _requestIdentifier, responseBodyCompressed, request, authorizationDetails, requestURI, requestMethod,
-				queryParameters, authorizationPresent, contentLength, requestBody, requestDetails
+				sThreadId, _requestIdentifier, request, authorizationDetails, requestURI, requestMethod,
+				requestBody, responseBodyCompressed, contentLength, requestDetails, queryParameters
 			);
 		}
 		catch (JsonFieldNotFound &e)
@@ -438,15 +438,11 @@ int FastCGIAPI::operator()()
 }
 
 void FastCGIAPI::handleRequest(
-	const string_view &sThreadId,
-	int64_t requestIdentifier,
-	FCGX_Request &request,
-	const string_view& requestURI,
-	const string_view& requestMethod,
-	const string_view& requestBody,
-	bool responseBodyCompressed,
-	const unordered_map<std::string, std::string>& requestDetails,
-	const unordered_map<std::string, std::string>& queryParameters)
+	const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
+	const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
+	const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
+	const unordered_map<string, string> &requestDetails,
+	const unordered_map<string, string> &queryParameters)
 {
 	bool isParamPresent;
 	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
@@ -485,7 +481,7 @@ void FastCGIAPI::handleRequest(
 		throw runtime_error(errorMessage);
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, requestURI, requestMethod, requestBody, responseBodyCompressed,
+	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed,
 		requestDetails, queryParameters);
 }
 

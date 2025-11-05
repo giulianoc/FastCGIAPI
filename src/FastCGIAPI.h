@@ -23,10 +23,18 @@ struct CheckAuthorizationFailed : public exception
 class FastCGIAPI
 {
   public:
+	class AuthorizationDetails
+	{
+	public:
+		string userName;
+		string password;
+	};
+
 	using Handler = function<void(
 		const string_view&, // sThreadId
 		int64_t, // requestIdentifier
 		FCGX_Request &, // request
+		const shared_ptr<AuthorizationDetails>&, // authorizationDetails
 		const string_view&, // requestURI
 		const string_view&, // requestMethod
 		const string_view&, // requestBody
@@ -34,13 +42,6 @@ class FastCGIAPI
 		const unordered_map<string, string>&, // requestDetails
 		const unordered_map<string, string>& // queryParameters
 	)>;
-
-	class AuthorizationDetails
-	{
-	  public:
-		string userName;
-		string password;
-	};
 
 	virtual void stopFastcgi();
 
@@ -223,15 +224,15 @@ protected:
 	unordered_map<std::string, Handler> _handlers;
 
 	virtual void manageRequestAndResponse(
-		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request,
-		shared_ptr<AuthorizationDetails> authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
-		const unordered_map<string, string>& queryParameters,
-		bool basicAuthenticationPresent, unsigned long contentLength,
-		const string_view& requestBody, const unordered_map<string, string> &requestDetails
+		const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request &request,
+		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
+		const string_view& requestBody, bool responseBodyCompressed, unsigned long contentLength,
+		const unordered_map<string, string> &requestDetails, const unordered_map<string, string>& queryParameters
 	) = 0;
 
 	virtual void handleRequest(
-		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string_view &requestURI,
+		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
+		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
 		const unordered_map<string, string> &requestDetails,
 		const unordered_map<string, string> &queryParameters
@@ -242,13 +243,13 @@ protected:
 	{
 		_handlers[name] = [this, method](
 			const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
-			const string_view& requestURI, const string_view& requestMethod,
+			const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
 			const string_view& requestBody, bool responseBodyCompressed,
 			const unordered_map<string, string>& requestDetails,
 			const unordered_map<string, string>& queryParameters)
 		{
 			// Chiama il metodo membro specificato
-			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request,
+			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
 				requestURI, requestMethod, requestBody, responseBodyCompressed, requestDetails, queryParameters);
 		};
 	}
