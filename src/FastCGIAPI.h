@@ -46,6 +46,8 @@ class FastCGIAPI
 
 	int operator()();
 
+	static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
+
 	static string getMapParameter(
 		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
@@ -67,8 +69,6 @@ protected:
 
 	virtual void loadConfiguration(json configurationRoot);
 
-	// static json loadConfigurationFile(const char *configurationPathName);
-	static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
 	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
 	static string getHeaderParameter(
@@ -224,9 +224,9 @@ protected:
 
 	virtual void manageRequestAndResponse(
 		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request,
-		const string_view& requestURI, const string_view& requestMethod,
+		shared_ptr<AuthorizationDetails> authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
 		const unordered_map<string, string>& queryParameters,
-		bool basicAuthenticationPresent, const string_view& userName, const string_view& password, unsigned long contentLength,
+		bool basicAuthenticationPresent, unsigned long contentLength,
 		const string_view& requestBody, const unordered_map<string, string> &requestDetails
 	) = 0;
 

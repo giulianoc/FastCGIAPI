@@ -267,8 +267,7 @@ int FastCGIAPI::operator()()
 
 		json permissionsRoot;
 		bool authorizationPresent = basicAuthenticationRequired(requestURI, queryParameters);
-		string userName;
-		string password;
+		shared_ptr<AuthorizationDetails> authorizationDetails = nullptr;
 		if (authorizationPresent)
 		{
 			try
@@ -313,52 +312,10 @@ int FastCGIAPI::operator()()
 					throw CheckAuthorizationFailed();
 				}
 
-				userName = usernameAndPassword.substr(0, userNameSeparator);
-				password = usernameAndPassword.substr(userNameSeparator + 1);
+				string userName = usernameAndPassword.substr(0, userNameSeparator);
+				string password = usernameAndPassword.substr(userNameSeparator + 1);
 
-				checkAuthorization(sThreadId, userName, password);
-			}
-			catch (CheckAuthorizationFailed &e)
-			{
-				SPDLOG_ERROR(
-					"checkAuthorization failed"
-					", _requestIdentifier: {}"
-					", threadId: {}"
-					", e.what(): {}",
-					_requestIdentifier, sThreadId, e.what()
-				);
-
-				string errorMessage = e.what();
-				SPDLOG_ERROR(errorMessage);
-
-				sendError(request, 401, errorMessage); // unauthorized
-
-				if (!_fcgxFinishDone)
-					FCGX_Finish_r(&request);
-
-				//  throw runtime_error(errorMessage);
-				continue;
-			}
-			catch (runtime_error &e)
-			{
-				SPDLOG_ERROR(
-					"checkAuthorization failed"
-					", _requestIdentifier: {}"
-					", threadId: {}"
-					", e.what(): {}",
-					_requestIdentifier, sThreadId, e.what()
-				);
-
-				string errorMessage = string("Internal server error");
-				SPDLOG_ERROR(errorMessage);
-
-				sendError(request, 500, errorMessage);
-
-				if (!_fcgxFinishDone)
-					FCGX_Finish_r(&request);
-
-				// throw runtime_error(errorMessage);
-				continue;
+				authorizationDetails = checkAuthorization(sThreadId, userName, password);
 			}
 			catch (exception &e)
 			{
@@ -370,10 +327,14 @@ int FastCGIAPI::operator()()
 					_requestIdentifier, sThreadId, e.what()
 				);
 
-				string errorMessage = "Internal server error";
+				int htmlResponseCode = 500;
+				if (dynamic_cast<CheckAuthorizationFailed*>(&e))
+					htmlResponseCode = 401;
+
+				string errorMessage = getHtmlStandardMessage(htmlResponseCode);
 				SPDLOG_ERROR(errorMessage);
 
-				sendError(request, 500, errorMessage);
+				sendError(request, htmlResponseCode, errorMessage); // unauthorized
 
 				if (!_fcgxFinishDone)
 					FCGX_Finish_r(&request);
@@ -399,8 +360,8 @@ int FastCGIAPI::operator()()
 			}
 
 			manageRequestAndResponse(
-				sThreadId, _requestIdentifier, responseBodyCompressed, request, requestURI, requestMethod, queryParameters, authorizationPresent,
-				userName, password, contentLength, requestBody, requestDetails
+				sThreadId, _requestIdentifier, responseBodyCompressed, request, authorizationDetails, requestURI, requestMethod,
+				queryParameters, authorizationPresent, contentLength, requestBody, requestDetails
 			);
 		}
 		catch (JsonFieldNotFound &e)
