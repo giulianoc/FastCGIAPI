@@ -237,7 +237,8 @@ protected:
 		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
 		const unordered_map<string, string> &requestDetails,
-		const unordered_map<string, string> &queryParameters
+		const unordered_map<string, string> &queryParameters,
+		bool exceptionIfNotManaged
 	);
 
 	template <typename Derived, typename Method>

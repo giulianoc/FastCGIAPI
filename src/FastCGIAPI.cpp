@@ -442,16 +442,40 @@ bool FastCGIAPI::handleRequest(
 	const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 	const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
 	const unordered_map<string, string> &requestDetails,
-	const unordered_map<string, string> &queryParameters)
+	const unordered_map<string, string> &queryParameters, const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
 	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
-		return true; // request not managed
+	{
+		if (exceptionIfNotManaged)
+			throw runtime_error( std::format(
+				"request is not managed because 'x-api-method' is missing"
+				", requestIdentifier: {}"
+				", threadId: {}"
+				", requestURI: {}"
+				", requestMethod: {}",
+				requestIdentifier, sThreadId, requestURI, requestMethod)
+			);
+		else
+			return true; // request not managed
+	}
 
 	auto handlerIt = _handlers.find(method);
 	if (handlerIt == _handlers.end())
-		return true; // request not managed
+	{
+		if (exceptionIfNotManaged)
+			throw runtime_error( std::format(
+				"request is not managed because no registration found for method {}"
+				", requestIdentifier: {}"
+				", threadId: {}"
+				", requestURI: {}"
+				", requestMethod: {}",
+				method, requestIdentifier, sThreadId, requestURI, requestMethod)
+			);
+		else
+			return true; // request not managed
+	}
 
 	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed,
 		requestDetails, queryParameters);
