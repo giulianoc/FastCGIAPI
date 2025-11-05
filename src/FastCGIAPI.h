@@ -224,22 +224,23 @@ class FastCGIAPI
 	virtual void handleRequest(
 		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const string_view &requestURI,
 		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
-		const unordered_map<std::string, std::string> &requestDetails,
-		const unordered_map<std::string, std::string> &queryParameters
+		const unordered_map<string, string> &requestDetails,
+		const unordered_map<string, string> &queryParameters
 	);
 
 	template <typename Derived, typename Method>
-	void registerHandler(const std::string& name, Method method)
+	void registerHandler(const string& name, Method method)
 	{
 		_handlers[name] = [this, method](
-			const std::string& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
-			const std::string& requestURI, const std::string& requestMethod,
-			const std::string& requestBody, const std::unordered_map<std::string, std::string>& requestDetails,
-			const std::unordered_map<std::string, std::string>& queryParameters)
+			const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
+			const string_view& requestURI, const string_view& requestMethod,
+			const string_view& requestBody, bool responseBodyCompressed,
+			const unordered_map<string, string>& requestDetails,
+			const unordered_map<string, string>& queryParameters)
 		{
 			// Chiama il metodo membro specificato
 			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request,
-				requestURI, requestMethod, requestBody, requestDetails, queryParameters);
+				requestURI, requestMethod, requestBody, responseBodyCompressed, requestDetails, queryParameters);
 		};
 	}
 
