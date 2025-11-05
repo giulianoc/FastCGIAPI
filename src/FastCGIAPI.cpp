@@ -437,7 +437,7 @@ int FastCGIAPI::operator()()
 	return 0;
 }
 
-void FastCGIAPI::handleRequest(
+bool FastCGIAPI::handleRequest(
 	const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
 	const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 	const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
@@ -447,42 +447,16 @@ void FastCGIAPI::handleRequest(
 	bool isParamPresent;
 	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
-	{
-		string errorMessage = string("The 'x-api-method' parameter is not found");
-		SPDLOG_ERROR(errorMessage);
-
-		int htmlResponseCode = 500;
-		json responseBodyRoot;
-		responseBodyRoot["status"] = to_string(htmlResponseCode);
-		responseBodyRoot["error"] = errorMessage;
-		sendError(request, htmlResponseCode, JSONUtils::toString(responseBodyRoot));
-
-		throw runtime_error(errorMessage);
-	}
+		return true; // request not managed
 
 	auto handlerIt = _handlers.find(method);
 	if (handlerIt == _handlers.end())
-	{
-		string errorMessage = std::format(
-			"No API is matched"
-			", requestURI: {}"
-			", method: {}"
-			", requestMethod: {}",
-			requestURI, method, requestMethod
-		);
-		SPDLOG_ERROR(errorMessage);
-
-		int htmlResponseCode = 500;
-		json responseBodyRoot;
-		responseBodyRoot["status"] = to_string(htmlResponseCode);
-		responseBodyRoot["error"] = errorMessage;
-		sendError(request, htmlResponseCode, JSONUtils::toString(responseBodyRoot));
-
-		throw runtime_error(errorMessage);
-	}
+		return true; // request not managed
 
 	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed,
 		requestDetails, queryParameters);
+
+	return false;
 }
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }

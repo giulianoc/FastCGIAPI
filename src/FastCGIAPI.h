@@ -232,7 +232,7 @@ protected:
 		const unordered_map<string, string> &requestDetails, const unordered_map<string, string>& queryParameters
 	) = 0;
 
-	virtual void handleRequest(
+	virtual bool handleRequest(
 		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
 		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
