@@ -278,7 +278,7 @@ int FastCGIAPI::operator()()
 				{
 					SPDLOG_ERROR("No 'Basic' authorization is present into the request");
 
-					throw CheckAuthorizationFailed();
+					throw HTTPError(401);
 				}
 
 				string authorizationPrefix = "Basic ";
@@ -292,7 +292,7 @@ int FastCGIAPI::operator()()
 						_requestIdentifier, sThreadId, it->second
 					);
 
-					throw CheckAuthorizationFailed();
+					throw HTTPError(401);
 				}
 
 				string usernameAndPasswordBase64 = it->second.substr(authorizationPrefix.length());
@@ -309,7 +309,7 @@ int FastCGIAPI::operator()()
 						_requestIdentifier, sThreadId, usernameAndPasswordBase64, usernameAndPassword
 					);
 
-					throw CheckAuthorizationFailed();
+					throw HTTPError(401);
 				}
 
 				string userName = usernameAndPassword.substr(0, userNameSeparator);
@@ -328,8 +328,8 @@ int FastCGIAPI::operator()()
 				);
 
 				int htmlResponseCode = 500;
-				if (dynamic_cast<CheckAuthorizationFailed*>(&e))
-					htmlResponseCode = 401;
+				if (dynamic_cast<HTTPError*>(&e))
+					htmlResponseCode = dynamic_cast<HTTPError*>(&e)->httpErrorCode;
 
 				string errorMessage = getHtmlStandardMessage(htmlResponseCode);
 				SPDLOG_ERROR(errorMessage);
@@ -461,7 +461,7 @@ bool FastCGIAPI::handleRequest(
 			return true; // request not managed
 	}
 
-	auto handlerIt = _handlers.find(method);
+	const auto handlerIt = _handlers.find(method);
 	if (handlerIt == _handlers.end())
 	{
 		if (exceptionIfNotManaged)
@@ -829,6 +829,118 @@ string FastCGIAPI::getClientIPAddress(const unordered_map<string, string> &reque
 		clientIPAddress = remoteAddrIt->second;
 
 	return clientIPAddress;
+}
+
+void FastCGIAPI::parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize)
+{
+	// Content-Range: bytes 0-99999/100000
+
+	try
+	{
+		auto pos = contentRange.find("bytes ");
+		if (pos == string_view::npos)
+		{
+			string errorMessage = std::format(
+				"Content-Range does not start with 'bytes '"
+				", contentRange: {}",
+				contentRange
+			);
+			SPDLOG_ERROR(errorMessage);
+
+			throw runtime_error(errorMessage);
+		}
+		contentRange.remove_prefix(pos + 6);
+
+		// Trova i separatori
+		const auto dash = contentRange.find('-');
+		const auto slash = contentRange.find('/');
+
+		uint64_t start = 0, end = 0, size = 0;
+
+		from_chars(contentRange.data(), contentRange.data() + dash, contentRangeStart);
+		from_chars(contentRange.data() + dash + 1, contentRange.data() + slash, contentRangeEnd);
+		from_chars(contentRange.data() + slash + 1, contentRange.data() + contentRange.size(), contentRangeSize);
+	}
+	catch (exception &e)
+	{
+		string errorMessage = std::format(
+			"Content-Range is not well done. Expected format: 'Content-Range: bytes <start>-<end>/<size>'"
+			", contentRange: {}",
+			contentRange
+		);
+		SPDLOG_ERROR(errorMessage);
+
+		throw runtime_error(errorMessage);
+	}
+
+
+	/*
+	contentRangeStart = -1;
+	contentRangeEnd = -1;
+	contentRangeSize = -1;
+
+	try
+	{
+		string prefix("bytes ");
+		if (!(contentRange.size() >= prefix.size() && 0 == contentRange.compare(0, prefix.size(), prefix)))
+		{
+			string errorMessage = std::format(
+				"Content-Range does not start with 'bytes '"
+				", contentRange: {}",
+				contentRange
+			);
+			SPDLOG_ERROR(errorMessage);
+
+			throw runtime_error(errorMessage);
+		}
+
+		size_t startIndex = prefix.size();
+		size_t endIndex = contentRange.find('-', startIndex);
+		if (endIndex == string::npos)
+		{
+			string errorMessage = std::format(
+				"Content-Range does not have '-'"
+				", contentRange: {}",
+				contentRange
+			);
+			SPDLOG_ERROR(errorMessage);
+
+			throw runtime_error(errorMessage);
+		}
+
+		contentRangeStart = stoll(contentRange.substr(startIndex, endIndex - startIndex));
+
+		endIndex++;
+		size_t sizeIndex = contentRange.find('/', endIndex);
+		if (sizeIndex == string::npos)
+		{
+			string errorMessage = std::format(
+				"Content-Range does not have '/'"
+				", contentRange: {}",
+				contentRange
+			);
+			SPDLOG_ERROR(errorMessage);
+
+			throw runtime_error(errorMessage);
+		}
+
+		contentRangeEnd = stoll(contentRange.substr(endIndex, sizeIndex - endIndex));
+
+		sizeIndex++;
+		contentRangeSize = stoll(contentRange.substr(sizeIndex));
+	}
+	catch (exception &e)
+	{
+		string errorMessage = std::format(
+			"Content-Range is not well done. Expected format: 'Content-Range: bytes <start>-<end>/<size>'"
+			", contentRange: {}",
+			contentRange
+		);
+		SPDLOG_ERROR(errorMessage);
+
+		throw runtime_error(errorMessage);
+	}
+	*/
 }
 
 string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)

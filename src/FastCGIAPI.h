@@ -15,14 +15,18 @@
 using namespace std;
 
 
-struct CheckAuthorizationFailed : public exception
-{
-	char const *what() const throw() override { return "Wrong Basic Authentication present into the Request"; };
-};
-
 class FastCGIAPI
 {
   public:
+	struct HTTPError final : public exception
+	{
+		int16_t httpErrorCode;
+		explicit HTTPError(const int16_t httpErrorCode) : exception(), httpErrorCode(httpErrorCode) {};
+		~HTTPError() noexcept override = default;
+
+		[[nodiscard]] char const *what() const noexcept override { return "FCGI HTTP Error"; };
+	};
+
 	class AuthorizationDetails
 	{
 	public:
@@ -58,6 +62,8 @@ class FastCGIAPI
 	{
 		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
 	}
+
+	void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
 protected:
 
