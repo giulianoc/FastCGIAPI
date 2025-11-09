@@ -18,13 +18,12 @@ using namespace std;
 class FastCGIAPI
 {
   public:
-	struct HTTPError final : public exception
+	struct HTTPError final : runtime_error
 	{
 		int16_t httpErrorCode;
-		explicit HTTPError(const int16_t httpErrorCode) : exception(), httpErrorCode(httpErrorCode) {};
-		~HTTPError() noexcept override = default;
-
-		[[nodiscard]] char const *what() const noexcept override { return "FCGI HTTP Error"; };
+		explicit HTTPError(const int16_t httpErrorCode, const string& errorMessage = "") :
+			runtime_error(errorMessage.empty() ? getHtmlStandardMessage(httpErrorCode) : errorMessage),
+			httpErrorCode(httpErrorCode) {};
 	};
 
 	class AuthorizationDetails
@@ -63,7 +62,7 @@ class FastCGIAPI
 		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
 	}
 
-	void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
+	static void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
 protected:
 
@@ -161,10 +160,8 @@ protected:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				string errorMessage = std::format("The {} query parameter is missing", parameterName);
-				SPDLOG_ERROR(errorMessage);
-
-				throw runtime_error(errorMessage);
+				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
+				throw HTTPError(400);
 			}
 
 			parameterValue = std::move(defaultParameter);
@@ -206,10 +203,8 @@ protected:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				string errorMessage = std::format("The {} query parameter is missing", parameterName);
-				SPDLOG_ERROR(errorMessage);
-
-				throw runtime_error(errorMessage);
+				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
+				throw HTTPError(400);
 			}
 
 			parameterValue = std::move(defaultParameter);
