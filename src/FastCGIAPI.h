@@ -75,7 +75,7 @@ protected:
 	static string escape(const string &url);
 	static string unescape(const string &url);
 
-	virtual void loadConfiguration(json configurationRoot);
+	void loadConfiguration(json configurationRoot);
 
 	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
