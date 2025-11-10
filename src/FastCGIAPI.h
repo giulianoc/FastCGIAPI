@@ -75,8 +75,6 @@ protected:
 	static string escape(const string &url);
 	static string unescape(const string &url);
 
-	void loadConfiguration(json configurationRoot);
-
 	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
 	static string getHeaderParameter(
@@ -279,6 +277,7 @@ protected:
 	static string getHtmlStandardMessage(int htmlResponseCode);
 
   private:
+	void loadConfiguration(json configurationRoot);
 	static void fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails);
 
 	static void fillQueryString(const string &queryString, unordered_map<string, string> &queryParameters);

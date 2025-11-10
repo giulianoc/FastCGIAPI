@@ -83,7 +83,7 @@ void FastCGIAPI::init(const json &configurationRoot, mutex *fcgiAcceptMutex)
 
 void FastCGIAPI::loadConfiguration(json configurationRoot)
 {
-	_maxAPIContentLength = JSONUtils::asInt64(configurationRoot["api"], "maxContentLength", 0);
+	_maxAPIContentLength = JSONUtils::asInt64(configurationRoot["api"], "maxContentLength", static_cast<int64_t>(0));
 	SPDLOG_TRACE(
 		"Configuration item"
 		", api->maxContentLength: {}",
