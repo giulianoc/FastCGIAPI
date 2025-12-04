@@ -78,7 +78,7 @@ protected:
 	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
 	static string getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, const string& headerName, const char *defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& headerName, const char *defaultParameter = "", const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -87,7 +87,7 @@ protected:
 
 	template <typename T>
 	static T getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, const string& headerName, T defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& headerName, T defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -97,7 +97,7 @@ protected:
 	}
 
 	static string getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, const char *defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, const char *defaultParameter = "", const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -106,7 +106,7 @@ protected:
 
 	template <typename T>
 	static T getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -116,7 +116,7 @@ protected:
 	template <typename T, template <class...> class C>
 	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
 	static C<T> getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -125,7 +125,7 @@ protected:
 
 	template <typename T>
 	static T getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -171,7 +171,7 @@ protected:
 	template <typename T, template <class...> class C>
 	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
 	static C<T> getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory,
+		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
