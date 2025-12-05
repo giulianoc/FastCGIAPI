@@ -52,7 +52,7 @@ class FastCGIAPI
 
 	int operator()();
 
-	static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
+	// static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
 
 	static string getMapParameter(
 		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,

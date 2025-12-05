@@ -1373,6 +1373,7 @@ void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string
 
 // #define BOOTSERVICE_DEBUG_LOG
 
+/*
 json FastCGIAPI::loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix)
 {
 
@@ -1401,6 +1402,7 @@ json FastCGIAPI::loadConfigurationFile(const string& configurationPathName, cons
 
 	return configurationRoot;
 }
+*/
 
 string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix)
 {
