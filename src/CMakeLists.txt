@@ -45,6 +45,8 @@ endif()
 
 add_library (FastCGIAPI SHARED ${SOURCES} ${HEADERS})
 
+#target_compile_definitions(FastCGIAPI PRIVATE BOOTSERVICE_DEBUG_LOG)
+
 if(APPLE)
   target_link_libraries(FastCGIAPI CurlWrapper)
   target_link_libraries(FastCGIAPI StringUtils)
