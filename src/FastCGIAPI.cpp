@@ -1402,7 +1402,6 @@ json FastCGIAPI::loadConfigurationFile(const string& configurationPathName, cons
 
 	return configurationRoot;
 }
-*/
 
 string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix)
 {
@@ -1439,6 +1438,7 @@ string FastCGIAPI::applyEnvironmentToConfiguration(string configuration, const s
 
 	return configuration;
 }
+*/
 
 string FastCGIAPI::base64_encode(const string &in)
 {

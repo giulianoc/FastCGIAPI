@@ -75,7 +75,7 @@ protected:
 	static string escape(const string &url);
 	static string unescape(const string &url);
 
-	static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
+	// static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
 
 	static string getHeaderParameter(
 		const unordered_map<string, string> &mapParameters, const string& headerName, const char *defaultParameter = "", const bool mandatory = false,
