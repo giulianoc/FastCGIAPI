@@ -931,6 +931,8 @@ string FastCGIAPI::getHtmlStandardMessage(int htmlResponseCode)
 		return {"OK"};
 	case 201:
 		return {"Created"};
+	case 204:
+		return {"No Content"};
 	case 301:
 		return {"Moved Permanently"};
 	case 302:
