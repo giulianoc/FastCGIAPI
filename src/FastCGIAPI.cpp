@@ -183,7 +183,6 @@ int FastCGIAPI::operator()()
 			if (unordered_map<string, string>::iterator it; (it = _requestDetails.find("QUERY_STRING")) != _requestDetails.end())
 				fillQueryString(it->second);
 
-			SPDLOG_INFO("AAAAAAAAAAAA");
 			{
 				unordered_map<string, string>::iterator it;
 				if ((it = _requestDetails.find("REQUEST_METHOD")) != _requestDetails.end() && (it->second == "POST" || it->second == "PUT"))
@@ -231,7 +230,6 @@ int FastCGIAPI::operator()()
 					}
 				}
 			}
-			SPDLOG_INFO("AAAAAAAAAAAA");
 		}
 		catch (exception &e)
 		{
@@ -246,7 +244,6 @@ int FastCGIAPI::operator()()
 			continue;
 		}
 
-			SPDLOG_INFO("AAAAAAAAAAAA");
 		string requestURI;
 		{
 			unordered_map<string, string>::iterator it;
@@ -255,7 +252,6 @@ int FastCGIAPI::operator()()
 				requestURI = it->second;
 		}
 
-			SPDLOG_INFO("AAAAAAAAAAAA");
 		json permissionsRoot;
 		bool authorizationPresent;
 		try
@@ -351,7 +347,6 @@ int FastCGIAPI::operator()()
 			}
 		}
 
-			SPDLOG_INFO("AAAAAAAAAAAA");
 		chrono::system_clock::time_point startManageRequest = chrono::system_clock::now();
 		try
 		{
@@ -367,7 +362,6 @@ int FastCGIAPI::operator()()
 					responseBodyCompressed = true;
 			}
 
-			SPDLOG_INFO("AAAAAAAAAAAA");
 			manageRequestAndResponse(
 				sThreadId, _requestIdentifier, request, authorizationDetails, requestURI, requestMethod,
 				requestBody, responseBodyCompressed, contentLength
