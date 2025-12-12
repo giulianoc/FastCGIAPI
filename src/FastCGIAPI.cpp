@@ -169,25 +169,25 @@ int FastCGIAPI::operator()()
 			_requestIdentifier, sThreadId
 		);
 
-		unordered_map<string, string> requestDetails;
-		unordered_map<string, string> queryParameters;
+		// unordered_map<string, string> requestDetails;
+		// unordered_map<string, string> queryParameters;
+		_requestDetails.clear();
+		_queryParameters.clear();
 		string requestBody;
 		unsigned long contentLength = 0;
 		try
 		{
-			fillEnvironmentDetails(request.envp, requestDetails);
+			fillEnvironmentDetails(request.envp);
 			// fillEnvironmentDetails(environ, requestDetails);
 
-			{
-				if (unordered_map<string, string>::iterator it; (it = requestDetails.find("QUERY_STRING")) != requestDetails.end())
-					fillQueryString(it->second, queryParameters);
-			}
+			if (unordered_map<string, string>::iterator it; (it = _requestDetails.find("QUERY_STRING")) != _requestDetails.end())
+				fillQueryString(it->second);
 
 			{
 				unordered_map<string, string>::iterator it;
-				if ((it = requestDetails.find("REQUEST_METHOD")) != requestDetails.end() && (it->second == "POST" || it->second == "PUT"))
+				if ((it = _requestDetails.find("REQUEST_METHOD")) != _requestDetails.end() && (it->second == "POST" || it->second == "PUT"))
 				{
-					if ((it = requestDetails.find("CONTENT_LENGTH")) != requestDetails.end())
+					if ((it = _requestDetails.find("CONTENT_LENGTH")) != _requestDetails.end())
 					{
 						if (!it->second.empty())
 						{
@@ -261,12 +261,12 @@ int FastCGIAPI::operator()()
 		{
 			unordered_map<string, string>::iterator it;
 
-			if ((it = requestDetails.find("REQUEST_URI")) != requestDetails.end())
+			if ((it = _requestDetails.find("REQUEST_URI")) != _requestDetails.end())
 				requestURI = it->second;
 		}
 
 		json permissionsRoot;
-		bool authorizationPresent = basicAuthenticationRequired(requestURI, queryParameters);
+		bool authorizationPresent = basicAuthenticationRequired(requestURI);
 		shared_ptr<AuthorizationDetails> authorizationDetails = nullptr;
 		if (authorizationPresent)
 		{
@@ -274,7 +274,7 @@ int FastCGIAPI::operator()()
 			{
 				unordered_map<string, string>::iterator it;
 
-				if ((it = requestDetails.find("HTTP_AUTHORIZATION")) == requestDetails.end())
+				if ((it = _requestDetails.find("HTTP_AUTHORIZATION")) == _requestDetails.end())
 				{
 					SPDLOG_ERROR("No 'Basic' authorization is present into the request");
 
@@ -350,18 +350,18 @@ int FastCGIAPI::operator()()
 			unordered_map<string, string>::iterator it;
 
 			string requestMethod;
-			if ((it = requestDetails.find("REQUEST_METHOD")) != requestDetails.end())
+			if ((it = _requestDetails.find("REQUEST_METHOD")) != _requestDetails.end())
 				requestMethod = it->second;
 
 			bool responseBodyCompressed = false;
 			{
-				if ((it = requestDetails.find("HTTP_X_RESPONSEBODYCOMPRESSED")) != requestDetails.end() && it->second == "true")
+				if ((it = _requestDetails.find("HTTP_X_RESPONSEBODYCOMPRESSED")) != _requestDetails.end() && it->second == "true")
 					responseBodyCompressed = true;
 			}
 
 			manageRequestAndResponse(
 				sThreadId, _requestIdentifier, request, authorizationDetails, requestURI, requestMethod,
-				requestBody, responseBodyCompressed, contentLength, requestDetails, queryParameters
+				requestBody, responseBodyCompressed, contentLength
 			);
 		}
 		catch (exception &e)
@@ -375,9 +375,9 @@ int FastCGIAPI::operator()()
 			);
 		}
 		{
-			auto method = getQueryParameter(queryParameters, "x-api-method", "", false);
+			auto method = getQueryParameter("x-api-method", "", false);
 
-			string clientIPAddress = getClientIPAddress(requestDetails);
+			string clientIPAddress = getClientIPAddress();
 
 			chrono::system_clock::time_point endManageRequest = chrono::system_clock::now();
 			if (!requestURI.ends_with("/status"))
@@ -421,11 +421,10 @@ bool FastCGIAPI::handleRequest(
 	const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
 	const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 	const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
-	const unordered_map<string, string> &requestDetails,
-	const unordered_map<string, string> &queryParameters, const bool exceptionIfNotManaged)
+	const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
-	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
+	const string method = getQueryParameter("x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
@@ -457,15 +456,14 @@ bool FastCGIAPI::handleRequest(
 			return true; // request not managed
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed,
-		requestDetails, queryParameters);
+	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed);
 
 	return false;
 }
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
 
-bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const unordered_map<string, string>& queryParameters)
+bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI)
 {
 	bool basicAuthenticationRequired = true;
 
@@ -797,15 +795,15 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 	_fcgxFinishDone = true;
 }
 
-string FastCGIAPI::getClientIPAddress(const unordered_map<string, string> &requestDetails)
+string FastCGIAPI::getClientIPAddress()
 {
 
 	string clientIPAddress;
 
 	// REMOTE_ADDR is the address of the load balancer
 	// auto remoteAddrIt = requestDetails.find("REMOTE_ADDR");
-	auto remoteAddrIt = requestDetails.find("HTTP_X_FORWARDED_FOR");
-	if (remoteAddrIt != requestDetails.end())
+	auto remoteAddrIt = _requestDetails.find("HTTP_X_FORWARDED_FOR");
+	if (remoteAddrIt != _requestDetails.end())
 		clientIPAddress = remoteAddrIt->second;
 
 	return clientIPAddress;
@@ -1140,7 +1138,7 @@ string FastCGIAPI::getQueryParameter(
 	bool *isParamPresent
 )
 {
-	return getQueryParameter(queryParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
+	return getQueryParameter(parameterName, string(defaultParameter), mandatory, isParamPresent);
 }
 
 vector<int32_t> FastCGIAPI::getQueryParameter(
@@ -1296,10 +1294,9 @@ set<string> FastCGIAPI::getQueryParameter(
 }
 */
 
-void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails)
+void FastCGIAPI::fillEnvironmentDetails(const char *const *envp)
 {
-
-	int valueIndex;
+	size_t valueIndex;
 
 	for (; *envp; ++envp)
 	{
@@ -1319,7 +1316,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<s
 		string key = environmentKeyValue.substr(0, valueIndex);
 		string value = environmentKeyValue.substr(valueIndex + 1);
 
-		requestDetails[key] = value;
+		_requestDetails[key] = value;
 
 		if (key == "REQUEST_URI")
 			SPDLOG_TRACE(
@@ -1336,7 +1333,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<s
 	}
 }
 
-void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string, string> &queryParameters)
+void FastCGIAPI::fillQueryString(const string& queryString)
 {
 
 	stringstream ss(queryString);
@@ -1362,7 +1359,7 @@ void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string
 			string key = token.substr(0, keySeparator);
 			string value = token.substr(keySeparator + 1);
 
-			queryParameters[key] = value;
+			_queryParameters[key] = value;
 
 			SPDLOG_TRACE(
 				"Query parameter"
