@@ -233,24 +233,11 @@ int FastCGIAPI::operator()()
 			}
 			SPDLOG_INFO("AAAAAAAAAAAA");
 		}
-		catch (runtime_error &e)
+		catch (exception &e)
 		{
 			SPDLOG_ERROR(e.what());
 
 			sendError(request, 500, e.what());
-
-			if (!_fcgxFinishDone)
-				FCGX_Finish_r(&request);
-
-			// throw runtime_error(errorMessage);
-			continue;
-		}
-		catch (exception &e)
-		{
-			string errorMessage = "Internal server error";
-			SPDLOG_ERROR(errorMessage);
-
-			sendError(request, 500, errorMessage);
 
 			if (!_fcgxFinishDone)
 				FCGX_Finish_r(&request);
@@ -270,7 +257,23 @@ int FastCGIAPI::operator()()
 
 			SPDLOG_INFO("AAAAAAAAAAAA");
 		json permissionsRoot;
-		bool authorizationPresent = basicAuthenticationRequired(requestURI);
+		bool authorizationPresent;
+		try
+		{
+			basicAuthenticationRequired(requestURI);
+		}
+		catch (exception &e)
+		{
+			SPDLOG_ERROR(e.what());
+
+			sendError(request, 500, e.what());
+
+			if (!_fcgxFinishDone)
+				FCGX_Finish_r(&request);
+
+			// throw runtime_error(errorMessage);
+			continue;
+		}
 		shared_ptr<AuthorizationDetails> authorizationDetails = nullptr;
 		if (authorizationPresent)
 		{
