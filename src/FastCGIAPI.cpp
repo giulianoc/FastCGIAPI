@@ -359,6 +359,7 @@ int FastCGIAPI::operator()()
 					responseBodyCompressed = true;
 			}
 
+			SPDLOG_INFO("AAAAAAAAAAAA");
 			manageRequestAndResponse(
 				sThreadId, _requestIdentifier, request, authorizationDetails, requestURI, requestMethod,
 				requestBody, responseBodyCompressed, contentLength
