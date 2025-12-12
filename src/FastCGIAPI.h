@@ -53,16 +53,6 @@ class FastCGIAPI
 
 	// static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
 
-	/*
-	static string getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
-	}
-	*/
-
 protected:
 
 	FastCGIAPI(const json& configuration, mutex *fcgiAcceptMutex);
@@ -77,6 +67,14 @@ protected:
 	static void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
 	// static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
+
+	static string getMapParameter(
+		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
+		bool *isParamPresent = nullptr
+	)
+	{
+		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
+	}
 
 	string getHeaderParameter(
 		const string& headerName, const char *defaultParameter = "", const bool mandatory = false,
