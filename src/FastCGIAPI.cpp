@@ -15,8 +15,6 @@ extern char **environ;
 
 FastCGIAPI::FastCGIAPI(const json& configurationRoot, mutex *fcgiAcceptMutex) { init(configurationRoot, fcgiAcceptMutex); }
 
-FastCGIAPI::~FastCGIAPI() = default;
-
 string FastCGIAPI::escape(const string &url)
 {
 	CURL *curl = curl_easy_init();
