@@ -116,6 +116,51 @@ protected:
 		return getMapParameter(_queryParameters, parameterName, delim, defaultParameter, mandatory, isParamPresent);
 	}
 
+	template <typename T>
+	optional<T> getOptHeaderParameter(
+		const string& parameterName)
+	{
+		return getOptMapParameter<T>(_requestDetails, parameterName);
+	}
+
+	template <typename T>
+	optional<T> getOptQueryParameter(
+		const string& parameterName)
+	{
+		return getOptMapParameter<T>(_queryParameters, parameterName);
+	}
+
+	template <typename T>
+	static optional<T> getOptMapParameter(
+		const unordered_map<string, string> &mapParameters, const string& parameterName)
+	{
+		T parameterValue;
+
+		auto it = mapParameters.find(parameterName);
+		if (it != mapParameters.end() && !it->second.empty())
+		{
+			if constexpr (std::is_same_v<T, std::string>)
+			{
+				// 2021-01-07: Remark: we have FIRST to replace + in space and then apply
+				// unescape
+				//	That  because if we have really a + char (%2B into the string), and we
+				// do the replace 	after unescape, this char will be changed to space and we
+				// do not want it
+				string plus = "+";
+				string plusDecoded = " ";
+				const string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
+
+				return unescape(firstDecoding);
+			}
+			else
+				parameterValue = StringUtils::getValue<T>(it->second);
+
+			return parameterValue;
+		}
+
+		return nullopt;
+	}
+
 	static string getMapParameter(
 		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
