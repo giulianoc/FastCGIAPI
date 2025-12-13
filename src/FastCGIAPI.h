@@ -287,6 +287,13 @@ protected:
 		bool exceptionIfNotManaged
 	);
 
+	template <typename F>
+	void registerHandler(const string& name, F&& f)
+	{
+		_handlers[name] = std::forward<F>(f);
+	}
+
+	/*
 	template <typename Derived, typename Method>
 	void registerHandler(const string& name, Method method)
 	{
@@ -305,6 +312,7 @@ protected:
 			SPDLOG_INFO("BBBBBBBBB");
 		};
 	}
+	*/
 
 	virtual shared_ptr<AuthorizationDetails> checkAuthorization(const string_view& sThreadId, const string_view& userName, const string_view& password) = 0;
 
