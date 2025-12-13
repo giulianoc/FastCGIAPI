@@ -285,7 +285,8 @@ int FastCGIAPI::operator()()
 				}
 
 				string authorizationPrefix = "Basic ";
-				if (!(it->second.size() >= authorizationPrefix.size() && 0 == it->second.compare(0, authorizationPrefix.size(), authorizationPrefix)))
+				if (!(it->second.size() >= authorizationPrefix.size() && 0 == it->second.compare(0, authorizationPrefix.size(),
+					authorizationPrefix)))
 				{
 					SPDLOG_ERROR(
 						"No 'Basic' authorization is present into the request"
@@ -431,32 +432,36 @@ bool FastCGIAPI::handleRequest(
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
-			throw runtime_error( std::format(
+		{
+			const string errorMessage = std::format(
 				"request is not managed because 'x-api-method' is missing"
 				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				requestIdentifier, sThreadId, requestURI, requestMethod)
-			);
-		else
-			return true; // request not managed
+				requestIdentifier, sThreadId, requestURI, requestMethod);
+			SPDLOG_ERROR(errorMessage);
+			throw runtime_error(errorMessage);
+		}
+		return true; // request not managed
 	}
 
 	const auto handlerIt = _handlers.find(method);
 	if (handlerIt == _handlers.end())
 	{
 		if (exceptionIfNotManaged)
-			throw runtime_error( std::format(
+		{
+			const string errorMessage = std::format(
 				"request is not managed because no registration found for method {}"
 				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				method, requestIdentifier, sThreadId, requestURI, requestMethod)
-			);
-		else
-			return true; // request not managed
+				method, requestIdentifier, sThreadId, requestURI, requestMethod);
+			SPDLOG_ERROR(errorMessage);
+			throw runtime_error(errorMessage);
+		}
+		return true; // request not managed
 	}
 
 	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed);
