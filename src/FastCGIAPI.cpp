@@ -470,6 +470,12 @@ bool FastCGIAPI::handleRequest(
 	}
 
 	SPDLOG_INFO("AAAAAAAAAAAA");
+	SPDLOG_INFO("AAAAAAAAAAAA sThreadId: {}", sThreadId);
+	SPDLOG_INFO("AAAAAAAAAAAA requestIdentifier: {}", requestIdentifier);
+	SPDLOG_INFO("AAAAAAAAAAAA requestURI: {}", requestURI);
+	SPDLOG_INFO("AAAAAAAAAAAA requestMethod: {}", requestMethod);
+	SPDLOG_INFO("AAAAAAAAAAAA requestBody: {}", requestBody);
+	SPDLOG_INFO("AAAAAAAAAAAA responseBodyCompressed: {}", responseBodyCompressed);
 	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed);
 	SPDLOG_INFO("AAAAAAAAAAAA");
 
