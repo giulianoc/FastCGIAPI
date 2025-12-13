@@ -290,12 +290,12 @@ protected:
 	template <typename Derived, typename Method>
 	void registerHandler(const string& name, Method method)
 	{
-		_handlers[name] = [this, method](
+		_handlers[name] = [name, this, method](
 			const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
 			const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
 			const string_view& requestBody, bool responseBodyCompressed)
 		{
-			SPDLOG_INFO("BBBBBBBBB");
+			SPDLOG_INFO("BBBBBBBBB: {}", name);
 			// Chiama il metodo membro specificato
 			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
 				requestURI, requestMethod, requestBody, responseBodyCompressed);
