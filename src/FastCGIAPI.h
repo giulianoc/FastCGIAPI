@@ -16,7 +16,7 @@
 using namespace std;
 
 
-class FastCGIAPI : public std::enable_shared_from_this<FastCGIAPI>
+class FastCGIAPI
 {
   public:
 	struct HTTPError final : runtime_error
@@ -290,19 +290,18 @@ protected:
 	template <typename Derived, typename Method>
 	void registerHandler(const string& name, Method method)
 	{
-		auto self = std::static_pointer_cast<Derived>(shared_from_this());
+		// Il cast avviene una sola volta, se this non è Derived, il bug è immediato e riproducibile
+		auto* self = static_cast<Derived*>(this);
 
-		_handlers[name] = [self, method, name](
+		_handlers[name] = [name, self, method](
 			const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
 			const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
 			const string_view& requestBody, bool responseBodyCompressed)
 		{
 			SPDLOG_INFO("BBBBBBBBB: {}", name);
 			// Chiama il metodo membro specificato
-			(self.get()->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
+			(self->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
 				requestURI, requestMethod, requestBody, responseBodyCompressed);
-			// (static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
-			//	requestURI, requestMethod, requestBody, responseBodyCompressed);
 			SPDLOG_INFO("BBBBBBBBB");
 		};
 	}

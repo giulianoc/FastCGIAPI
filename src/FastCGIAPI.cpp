@@ -426,9 +426,7 @@ bool FastCGIAPI::handleRequest(
 	const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
-	SPDLOG_INFO("AAAAAAAAAAAA");
 	const string method = getQueryParameter("x-api-method", "", false, &isParamPresent);
-	SPDLOG_INFO("AAAAAAAAAAAA method: {}, isParamPresent: {}", method, isParamPresent);
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
@@ -446,12 +444,9 @@ bool FastCGIAPI::handleRequest(
 		return true; // request not managed
 	}
 
-	SPDLOG_INFO("AAAAAAAAAAAA");
 	const auto handlerIt = _handlers.find(method);
-	SPDLOG_INFO("AAAAAAAAAAAA");
 	if (handlerIt == _handlers.end())
 	{
-	SPDLOG_INFO("AAAAAAAAAAAA");
 		if (exceptionIfNotManaged)
 		{
 			const string errorMessage = std::format(
@@ -467,15 +462,7 @@ bool FastCGIAPI::handleRequest(
 		return true; // request not managed
 	}
 
-	SPDLOG_INFO("AAAAAAAAAAAA");
-	SPDLOG_INFO("AAAAAAAAAAAA sThreadId: {}", sThreadId);
-	SPDLOG_INFO("AAAAAAAAAAAA requestIdentifier: {}", requestIdentifier);
-	SPDLOG_INFO("AAAAAAAAAAAA requestURI: {}", requestURI);
-	SPDLOG_INFO("AAAAAAAAAAAA requestMethod: {}", requestMethod);
-	SPDLOG_INFO("AAAAAAAAAAAA requestBody: {}", requestBody);
-	SPDLOG_INFO("AAAAAAAAAAAA responseBodyCompressed: {}", responseBodyCompressed);
 	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed);
-	SPDLOG_INFO("AAAAAAAAAAAA");
 
 	return false;
 }
