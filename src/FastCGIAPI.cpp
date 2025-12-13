@@ -167,8 +167,8 @@ int FastCGIAPI::operator()()
 			_requestIdentifier, sThreadId
 		);
 
-		// unordered_map<string, string> requestDetails;
-		// unordered_map<string, string> queryParameters;
+		// auto _requestDetails = make_shared<unordered_map<string, string>>();
+		// auto _queryParameters = make_shared<unordered_map<string, string>>();
 		_requestDetails.clear();
 		_queryParameters.clear();
 		string requestBody;

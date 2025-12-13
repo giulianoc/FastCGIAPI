@@ -271,8 +271,8 @@ protected:
 
 	unordered_map<std::string, Handler> _handlers;
 
-	unordered_map<string, string> _requestDetails{};
-	unordered_map<string, string> _queryParameters{};
+	unordered_map<string, string> _requestDetails;
+	unordered_map<string, string> _queryParameters;
 
 	virtual void manageRequestAndResponse(
 		const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request &request,
