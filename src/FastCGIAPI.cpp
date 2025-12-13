@@ -15,6 +15,8 @@ extern char **environ;
 
 FastCGIAPI::FastCGIAPI(const json& configurationRoot, mutex *fcgiAcceptMutex) { init(configurationRoot, fcgiAcceptMutex); }
 
+FastCGIAPI::~FastCGIAPI() = default;
+
 string FastCGIAPI::escape(const string &url)
 {
 	CURL *curl = curl_easy_init();
@@ -167,25 +169,25 @@ int FastCGIAPI::operator()()
 			_requestIdentifier, sThreadId
 		);
 
-		_requestDetails = make_shared<unordered_map<string, string>>();
-		_queryParameters = make_shared<unordered_map<string, string>>();
-		// _requestDetails.clear();
-		// _queryParameters.clear();
+		unordered_map<string, string> requestDetails;
+		unordered_map<string, string> queryParameters;
 		string requestBody;
 		unsigned long contentLength = 0;
 		try
 		{
-			fillEnvironmentDetails(request.envp);
+			fillEnvironmentDetails(request.envp, requestDetails);
 			// fillEnvironmentDetails(environ, requestDetails);
 
-			if (unordered_map<string, string>::iterator it; (it = _requestDetails->find("QUERY_STRING")) != _requestDetails->end())
-				fillQueryString(it->second);
+			{
+				if (unordered_map<string, string>::iterator it; (it = requestDetails.find("QUERY_STRING")) != requestDetails.end())
+					fillQueryString(it->second, queryParameters);
+			}
 
 			{
 				unordered_map<string, string>::iterator it;
-				if ((it = _requestDetails->find("REQUEST_METHOD")) != _requestDetails->end() && (it->second == "POST" || it->second == "PUT"))
+				if ((it = requestDetails.find("REQUEST_METHOD")) != requestDetails.end() && (it->second == "POST" || it->second == "PUT"))
 				{
-					if ((it = _requestDetails->find("CONTENT_LENGTH")) != _requestDetails->end())
+					if ((it = requestDetails.find("CONTENT_LENGTH")) != requestDetails.end())
 					{
 						if (!it->second.empty())
 						{
@@ -229,11 +231,24 @@ int FastCGIAPI::operator()()
 				}
 			}
 		}
-		catch (exception &e)
+		catch (runtime_error &e)
 		{
 			SPDLOG_ERROR(e.what());
 
 			sendError(request, 500, e.what());
+
+			if (!_fcgxFinishDone)
+				FCGX_Finish_r(&request);
+
+			// throw runtime_error(errorMessage);
+			continue;
+		}
+		catch (exception &e)
+		{
+			string errorMessage = "Internal server error";
+			SPDLOG_ERROR(errorMessage);
+
+			sendError(request, 500, errorMessage);
 
 			if (!_fcgxFinishDone)
 				FCGX_Finish_r(&request);
@@ -246,28 +261,12 @@ int FastCGIAPI::operator()()
 		{
 			unordered_map<string, string>::iterator it;
 
-			if ((it = _requestDetails->find("REQUEST_URI")) != _requestDetails->end())
+			if ((it = requestDetails.find("REQUEST_URI")) != requestDetails.end())
 				requestURI = it->second;
 		}
 
 		json permissionsRoot;
-		bool authorizationPresent;
-		try
-		{
-			basicAuthenticationRequired(requestURI);
-		}
-		catch (exception &e)
-		{
-			SPDLOG_ERROR(e.what());
-
-			sendError(request, 500, e.what());
-
-			if (!_fcgxFinishDone)
-				FCGX_Finish_r(&request);
-
-			// throw runtime_error(errorMessage);
-			continue;
-		}
+		bool authorizationPresent = basicAuthenticationRequired(requestURI, queryParameters);
 		shared_ptr<AuthorizationDetails> authorizationDetails = nullptr;
 		if (authorizationPresent)
 		{
@@ -275,7 +274,7 @@ int FastCGIAPI::operator()()
 			{
 				unordered_map<string, string>::iterator it;
 
-				if ((it = _requestDetails->find("HTTP_AUTHORIZATION")) == _requestDetails->end())
+				if ((it = requestDetails.find("HTTP_AUTHORIZATION")) == requestDetails.end())
 				{
 					SPDLOG_ERROR("No 'Basic' authorization is present into the request");
 
@@ -283,8 +282,7 @@ int FastCGIAPI::operator()()
 				}
 
 				string authorizationPrefix = "Basic ";
-				if (!(it->second.size() >= authorizationPrefix.size() && 0 == it->second.compare(0, authorizationPrefix.size(),
-					authorizationPrefix)))
+				if (!(it->second.size() >= authorizationPrefix.size() && 0 == it->second.compare(0, authorizationPrefix.size(), authorizationPrefix)))
 				{
 					SPDLOG_ERROR(
 						"No 'Basic' authorization is present into the request"
@@ -352,18 +350,18 @@ int FastCGIAPI::operator()()
 			unordered_map<string, string>::iterator it;
 
 			string requestMethod;
-			if ((it = _requestDetails->find("REQUEST_METHOD")) != _requestDetails->end())
+			if ((it = requestDetails.find("REQUEST_METHOD")) != requestDetails.end())
 				requestMethod = it->second;
 
 			bool responseBodyCompressed = false;
 			{
-				if ((it = _requestDetails->find("HTTP_X_RESPONSEBODYCOMPRESSED")) != _requestDetails->end() && it->second == "true")
+				if ((it = requestDetails.find("HTTP_X_RESPONSEBODYCOMPRESSED")) != requestDetails.end() && it->second == "true")
 					responseBodyCompressed = true;
 			}
 
 			manageRequestAndResponse(
 				sThreadId, _requestIdentifier, request, authorizationDetails, requestURI, requestMethod,
-				requestBody, responseBodyCompressed, contentLength
+				requestBody, responseBodyCompressed, contentLength, requestDetails, queryParameters
 			);
 		}
 		catch (exception &e)
@@ -377,9 +375,9 @@ int FastCGIAPI::operator()()
 			);
 		}
 		{
-			auto method = getQueryParameter("x-api-method", "", false);
+			auto method = getQueryParameter(queryParameters, "x-api-method", "", false);
 
-			string clientIPAddress = getClientIPAddress();
+			string clientIPAddress = getClientIPAddress(requestDetails);
 
 			chrono::system_clock::time_point endManageRequest = chrono::system_clock::now();
 			if (!requestURI.ends_with("/status"))
@@ -423,53 +421,51 @@ bool FastCGIAPI::handleRequest(
 	const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
 	const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
 	const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
-	const bool exceptionIfNotManaged)
+	const unordered_map<string, string> &requestDetails,
+	const unordered_map<string, string> &queryParameters, const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
-	const string method = getQueryParameter("x-api-method", "", false, &isParamPresent);
+	const string method = getQueryParameter(queryParameters, "x-api-method", "", false, &isParamPresent);
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
-		{
-			const string errorMessage = std::format(
+			throw runtime_error( std::format(
 				"request is not managed because 'x-api-method' is missing"
 				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				requestIdentifier, sThreadId, requestURI, requestMethod);
-			SPDLOG_ERROR(errorMessage);
-			throw runtime_error(errorMessage);
-		}
-		return true; // request not managed
+				requestIdentifier, sThreadId, requestURI, requestMethod)
+			);
+		else
+			return true; // request not managed
 	}
 
 	const auto handlerIt = _handlers.find(method);
 	if (handlerIt == _handlers.end())
 	{
 		if (exceptionIfNotManaged)
-		{
-			const string errorMessage = std::format(
+			throw runtime_error( std::format(
 				"request is not managed because no registration found for method {}"
 				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				method, requestIdentifier, sThreadId, requestURI, requestMethod);
-			SPDLOG_ERROR(errorMessage);
-			throw runtime_error(errorMessage);
-		}
-		return true; // request not managed
+				method, requestIdentifier, sThreadId, requestURI, requestMethod)
+			);
+		else
+			return true; // request not managed
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed);
+	handlerIt->second(sThreadId, requestIdentifier, request, authorizationDetails, requestURI, requestMethod, requestBody, responseBodyCompressed,
+		requestDetails, queryParameters);
 
 	return false;
 }
 
 void FastCGIAPI::stopFastcgi() { _shutdown = true; }
 
-bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI)
+bool FastCGIAPI::basicAuthenticationRequired( const string& requestURI, const unordered_map<string, string>& queryParameters)
 {
 	bool basicAuthenticationRequired = true;
 
@@ -801,15 +797,15 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 	_fcgxFinishDone = true;
 }
 
-string FastCGIAPI::getClientIPAddress()
+string FastCGIAPI::getClientIPAddress(const unordered_map<string, string> &requestDetails)
 {
 
 	string clientIPAddress;
 
 	// REMOTE_ADDR is the address of the load balancer
 	// auto remoteAddrIt = requestDetails.find("REMOTE_ADDR");
-	auto remoteAddrIt = _requestDetails->find("HTTP_X_FORWARDED_FOR");
-	if (remoteAddrIt != _requestDetails->end())
+	auto remoteAddrIt = requestDetails.find("HTTP_X_FORWARDED_FOR");
+	if (remoteAddrIt != requestDetails.end())
 		clientIPAddress = remoteAddrIt->second;
 
 	return clientIPAddress;
@@ -1144,7 +1140,7 @@ string FastCGIAPI::getQueryParameter(
 	bool *isParamPresent
 )
 {
-	return getQueryParameter(parameterName, string(defaultParameter), mandatory, isParamPresent);
+	return getQueryParameter(queryParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
 }
 
 vector<int32_t> FastCGIAPI::getQueryParameter(
@@ -1300,9 +1296,10 @@ set<string> FastCGIAPI::getQueryParameter(
 }
 */
 
-void FastCGIAPI::fillEnvironmentDetails(const char *const *envp)
+void FastCGIAPI::fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails)
 {
-	size_t valueIndex;
+
+	int valueIndex;
 
 	for (; *envp; ++envp)
 	{
@@ -1322,7 +1319,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp)
 		string key = environmentKeyValue.substr(0, valueIndex);
 		string value = environmentKeyValue.substr(valueIndex + 1);
 
-		_requestDetails->emplace(key, value);
+		requestDetails[key] = value;
 
 		if (key == "REQUEST_URI")
 			SPDLOG_TRACE(
@@ -1339,7 +1336,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp)
 	}
 }
 
-void FastCGIAPI::fillQueryString(const string& queryString)
+void FastCGIAPI::fillQueryString(const string& queryString, unordered_map<string, string> &queryParameters)
 {
 
 	stringstream ss(queryString);
@@ -1365,7 +1362,7 @@ void FastCGIAPI::fillQueryString(const string& queryString)
 			string key = token.substr(0, keySeparator);
 			string value = token.substr(keySeparator + 1);
 
-			_queryParameters->emplace(key, value);
+			queryParameters[key] = value;
 
 			SPDLOG_TRACE(
 				"Query parameter"
