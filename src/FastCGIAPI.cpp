@@ -428,7 +428,9 @@ bool FastCGIAPI::handleRequest(
 	const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
+	SPDLOG_INFO("AAAAAAAAAAAA");
 	const string method = getQueryParameter("x-api-method", "", false, &isParamPresent);
+	SPDLOG_INFO("AAAAAAAAAAAA");
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
