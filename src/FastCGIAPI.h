@@ -132,12 +132,12 @@ protected:
 
 	template <typename T>
 	static optional<T> getOptMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName)
+		const shared_ptr<unordered_map<string, string>> &mapParameters, const string& parameterName)
 	{
 		T parameterValue;
 
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
+		auto it = mapParameters->find(parameterName);
+		if (it != mapParameters->end() && !it->second.empty())
 		{
 			if constexpr (std::is_same_v<T, std::string>)
 			{
@@ -162,7 +162,7 @@ protected:
 	}
 
 	static string getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
+		const shared_ptr<unordered_map<string, string>> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
 		bool *isParamPresent = nullptr
 	)
 	{
@@ -172,14 +172,14 @@ protected:
 	template <typename T>
 	requires (!std::is_same_v<T, const char*>)
 	static T getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
+		const shared_ptr<unordered_map<string, string>> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
 		T parameterValue;
 
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
+		auto it = mapParameters->find(parameterName);
+		if (it != mapParameters->end() && !it->second.empty())
 		{
 			if (isParamPresent != nullptr)
 				*isParamPresent = true;
@@ -218,14 +218,14 @@ protected:
 	template <typename T, template <class...> class C>
 	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
 	static C<T> getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
+		const shared_ptr<unordered_map<string, string>> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
 		bool *isParamPresent = nullptr
 	)
 	{
 		C<T> parameterValue;
 
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
+		auto it = mapParameters->find(parameterName);
+		if (it != mapParameters->end() && !it->second.empty())
 		{
 			if (isParamPresent != nullptr)
 				*isParamPresent = true;
@@ -271,8 +271,8 @@ protected:
 
 	unordered_map<std::string, Handler> _handlers;
 
-	unordered_map<string, string> _requestDetails;
-	unordered_map<string, string> _queryParameters;
+	shared_ptr<unordered_map<string, string>> _requestDetails;
+	shared_ptr<unordered_map<string, string>> _queryParameters;
 
 	virtual void manageRequestAndResponse(
 		const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request &request,

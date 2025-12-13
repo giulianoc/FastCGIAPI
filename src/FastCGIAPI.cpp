@@ -167,10 +167,10 @@ int FastCGIAPI::operator()()
 			_requestIdentifier, sThreadId
 		);
 
-		// auto _requestDetails = make_shared<unordered_map<string, string>>();
-		// auto _queryParameters = make_shared<unordered_map<string, string>>();
-		_requestDetails.clear();
-		_queryParameters.clear();
+		_requestDetails = make_shared<unordered_map<string, string>>();
+		_queryParameters = make_shared<unordered_map<string, string>>();
+		// _requestDetails.clear();
+		// _queryParameters.clear();
 		string requestBody;
 		unsigned long contentLength = 0;
 		try
@@ -178,14 +178,14 @@ int FastCGIAPI::operator()()
 			fillEnvironmentDetails(request.envp);
 			// fillEnvironmentDetails(environ, requestDetails);
 
-			if (unordered_map<string, string>::iterator it; (it = _requestDetails.find("QUERY_STRING")) != _requestDetails.end())
+			if (unordered_map<string, string>::iterator it; (it = _requestDetails->find("QUERY_STRING")) != _requestDetails->end())
 				fillQueryString(it->second);
 
 			{
 				unordered_map<string, string>::iterator it;
-				if ((it = _requestDetails.find("REQUEST_METHOD")) != _requestDetails.end() && (it->second == "POST" || it->second == "PUT"))
+				if ((it = _requestDetails->find("REQUEST_METHOD")) != _requestDetails->end() && (it->second == "POST" || it->second == "PUT"))
 				{
-					if ((it = _requestDetails.find("CONTENT_LENGTH")) != _requestDetails.end())
+					if ((it = _requestDetails->find("CONTENT_LENGTH")) != _requestDetails->end())
 					{
 						if (!it->second.empty())
 						{
@@ -246,7 +246,7 @@ int FastCGIAPI::operator()()
 		{
 			unordered_map<string, string>::iterator it;
 
-			if ((it = _requestDetails.find("REQUEST_URI")) != _requestDetails.end())
+			if ((it = _requestDetails->find("REQUEST_URI")) != _requestDetails->end())
 				requestURI = it->second;
 		}
 
@@ -275,7 +275,7 @@ int FastCGIAPI::operator()()
 			{
 				unordered_map<string, string>::iterator it;
 
-				if ((it = _requestDetails.find("HTTP_AUTHORIZATION")) == _requestDetails.end())
+				if ((it = _requestDetails->find("HTTP_AUTHORIZATION")) == _requestDetails->end())
 				{
 					SPDLOG_ERROR("No 'Basic' authorization is present into the request");
 
@@ -352,12 +352,12 @@ int FastCGIAPI::operator()()
 			unordered_map<string, string>::iterator it;
 
 			string requestMethod;
-			if ((it = _requestDetails.find("REQUEST_METHOD")) != _requestDetails.end())
+			if ((it = _requestDetails->find("REQUEST_METHOD")) != _requestDetails->end())
 				requestMethod = it->second;
 
 			bool responseBodyCompressed = false;
 			{
-				if ((it = _requestDetails.find("HTTP_X_RESPONSEBODYCOMPRESSED")) != _requestDetails.end() && it->second == "true")
+				if ((it = _requestDetails->find("HTTP_X_RESPONSEBODYCOMPRESSED")) != _requestDetails->end() && it->second == "true")
 					responseBodyCompressed = true;
 			}
 
@@ -808,8 +808,8 @@ string FastCGIAPI::getClientIPAddress()
 
 	// REMOTE_ADDR is the address of the load balancer
 	// auto remoteAddrIt = requestDetails.find("REMOTE_ADDR");
-	auto remoteAddrIt = _requestDetails.find("HTTP_X_FORWARDED_FOR");
-	if (remoteAddrIt != _requestDetails.end())
+	auto remoteAddrIt = _requestDetails->find("HTTP_X_FORWARDED_FOR");
+	if (remoteAddrIt != _requestDetails->end())
 		clientIPAddress = remoteAddrIt->second;
 
 	return clientIPAddress;
@@ -1322,7 +1322,7 @@ void FastCGIAPI::fillEnvironmentDetails(const char *const *envp)
 		string key = environmentKeyValue.substr(0, valueIndex);
 		string value = environmentKeyValue.substr(valueIndex + 1);
 
-		_requestDetails[key] = value;
+		_requestDetails->emplace(key, value);
 
 		if (key == "REQUEST_URI")
 			SPDLOG_TRACE(
@@ -1365,7 +1365,7 @@ void FastCGIAPI::fillQueryString(const string& queryString)
 			string key = token.substr(0, keySeparator);
 			string value = token.substr(keySeparator + 1);
 
-			_queryParameters[key] = value;
+			_queryParameters->emplace(key, value);
 
 			SPDLOG_TRACE(
 				"Query parameter"
