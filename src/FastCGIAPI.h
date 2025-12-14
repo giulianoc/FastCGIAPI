@@ -1,16 +1,14 @@
 
 #pragma once
 
-#include <set>
 #include <unordered_map>
-#include <vector>
-#include "StringUtils.h"
 #ifndef SPDLOG_ACTIVE_LEVEL
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 #endif
 #include "spdlog/spdlog.h"
+#include "FCGIRequestData.h"
 #include "JSONUtils.h"
-#include "fcgi_stdio.h"
+// #include "fcgi_stdio.h"
 
 using namespace std;
 
@@ -18,51 +16,17 @@ using namespace std;
 class FastCGIAPI
 {
   public:
-	struct HTTPError final : runtime_error
-	{
-		int16_t httpErrorCode;
-		explicit HTTPError(const int16_t httpErrorCode, const string& errorMessage = "") :
-			runtime_error(errorMessage.empty() ? getHtmlStandardMessage(httpErrorCode) : errorMessage),
-			httpErrorCode(httpErrorCode) {};
-	};
-
-	class AuthorizationDetails
-	{
-	public:
-		string userName;
-		string password;
-
-		virtual ~AuthorizationDetails() = default;
-	};
 
 	using Handler = function<void(
 		const string_view&, // sThreadId
 		int64_t, // requestIdentifier
 		FCGX_Request &, // request
-		const shared_ptr<AuthorizationDetails>&, // authorizationDetails
-		const string_view&, // requestURI
-		const string_view&, // requestMethod
-		const string_view&, // requestBody
-		bool, // responseBodyCompressed
-		const unordered_map<string, string>&, // requestDetails
-		const unordered_map<string, string>& // queryParameters
+		const FCGIRequestData& // requestData
 	)>;
 
 	virtual void stopFastcgi();
 
 	int operator()();
-
-	// static json loadConfigurationFile(const string& configurationPathName, const string& environmentPrefix);
-
-	static string getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string &parameterName, const char *defaultParameter, const bool mandatory,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
-	}
-
-	static void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
 protected:
 
@@ -72,148 +36,8 @@ protected:
 
 	virtual ~FastCGIAPI();
 
-	static string escape(const string &url);
-	static string unescape(const string &url);
-
-	// static string applyEnvironmentToConfiguration(string configuration, const string& environmentPrefix);
-
-	static string getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, const string& headerName, const char *defaultParameter = "", const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getHeaderParameter(mapParameters, headerName, string(defaultParameter), mandatory, isParamPresent);
-	}
-
-	template <typename T>
-	static T getHeaderParameter(
-		const unordered_map<string, string> &mapParameters, const string& headerName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, std::format("HTTP_{}",
-			StringUtils::replaceAll(StringUtils::upperCase(headerName), "-", "_")),
-			string(defaultParameter), mandatory, isParamPresent);
-	}
-
-	static string getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, const char *defaultParameter = "", const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, string(defaultParameter), mandatory, isParamPresent);
-	}
-
-	template <typename T>
-	static T getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, defaultParameter, mandatory, isParamPresent);
-	}
-
-	template <typename T, template <class...> class C>
-	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
-	static C<T> getQueryParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		return getMapParameter(mapParameters, parameterName, delim, defaultParameter, mandatory, isParamPresent);
-	}
-
-	template <typename T>
-	static T getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		T parameterValue;
-
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
-		{
-			if (isParamPresent != nullptr)
-				*isParamPresent = true;
-			if constexpr (std::is_same_v<T, std::string>)
-			{
-				// 2021-01-07: Remark: we have FIRST to replace + in space and then apply
-				// unescape
-				//	That  because if we have really a + char (%2B into the string), and we
-				// do the replace 	after unescape, this char will be changed to space and we
-				// do not want it
-				string plus = "+";
-				string plusDecoded = " ";
-				const string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
-
-				return unescape(firstDecoding);
-			}
-			else
-				parameterValue = StringUtils::getValue<T>(it->second);
-		}
-		else
-		{
-			if (isParamPresent != nullptr)
-				*isParamPresent = false;
-			if (mandatory)
-			{
-				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
-				throw HTTPError(400);
-			}
-
-			parameterValue = std::move(defaultParameter);
-		}
-
-		return parameterValue;
-	}
-
-	template <typename T, template <class...> class C>
-	requires (is_same_v<C<T>, vector<T>> || is_same_v<C<T>, set<T>>)
-	static C<T> getMapParameter(
-		const unordered_map<string, string> &mapParameters, const string& parameterName, char delim, C<T> defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
-	)
-	{
-		C<T> parameterValue;
-
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
-		{
-			if (isParamPresent != nullptr)
-				*isParamPresent = true;
-			stringstream ss(it->second);
-			string token;
-			while (getline(ss, token, delim))
-			{
-				if (!token.empty())
-				{
-					if constexpr (is_same_v<C<T>, vector<T>>)
-						parameterValue.push_back(StringUtils::getValue<T>(token));
-					else
-						parameterValue.insert(StringUtils::getValue<T>(token));
-				}
-			}
-		}
-		else
-		{
-			if (isParamPresent != nullptr)
-				*isParamPresent = false;
-			if (mandatory)
-			{
-				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
-				throw HTTPError(400);
-			}
-
-			parameterValue = std::move(defaultParameter);
-		}
-
-		return parameterValue;
-	}
-
   protected:
 	bool _shutdown{};
-	// json _configurationRoot;
 
 	bool _fcgxFinishDone{};
 
@@ -226,39 +50,38 @@ protected:
 
 	virtual void manageRequestAndResponse(
 		const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request &request,
-		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
-		const string_view& requestBody, bool responseBodyCompressed, unsigned long contentLength,
-		const unordered_map<string, string> &requestDetails, const unordered_map<string, string>& queryParameters
-	) = 0;
+		const FCGIRequestData& requestData) = 0;
 
 	virtual bool handleRequest(
-		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
-		const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view &requestURI,
-		const string_view &requestMethod, const string_view &requestBody, bool responseBodyCompressed,
-		const unordered_map<string, string> &requestDetails,
-		const unordered_map<string, string> &queryParameters,
-		bool exceptionIfNotManaged
+		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const FCGIRequestData &requestData, bool exceptionIfNotManaged
 	);
 
+	template <typename F>
+	void registerHandler(const string& name, F&& f)
+	{
+		_handlers[name] = std::forward<F>(f);
+	}
+	/*
 	template <typename Derived, typename Method>
 	void registerHandler(const string& name, Method method)
 	{
-		_handlers[name] = [this, method](
-			const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request& request,
-			const shared_ptr<AuthorizationDetails>& authorizationDetails, const string_view& requestURI, const string_view& requestMethod,
-			const string_view& requestBody, bool responseBodyCompressed,
-			const unordered_map<string, string>& requestDetails,
-			const unordered_map<string, string>& queryParameters)
+	// Il cast avviene una sola volta, se this non è Derived, il bug è immediato e riproducibile
+	auto* self = static_cast<Derived*>(this);
+
+	_handlers[name] = [self, method](
+		const string_view& sThreadId, int64_t requestIdentifier,
+		FCGX_Request& request, const FCGIRequestData& requestData)
 		{
 			// Chiama il metodo membro specificato
-			(static_cast<Derived*>(this)->*method)(sThreadId, requestIdentifier, request, authorizationDetails,
-				requestURI, requestMethod, requestBody, responseBodyCompressed, requestDetails, queryParameters);
+			(self->*method)(sThreadId, requestIdentifier, request, requestData);
 		};
 	}
+	*/
 
-	virtual shared_ptr<AuthorizationDetails> checkAuthorization(const string_view& sThreadId, const string_view& userName, const string_view& password) = 0;
+	virtual shared_ptr<FCGIRequestData::AuthorizationDetails> checkAuthorization(const string_view& sThreadId,
+		const string_view& userName, const string_view& password) = 0;
 
-	virtual bool basicAuthenticationRequired(const string &requestURI, const unordered_map<string, string> &queryParameters);
+	virtual bool basicAuthenticationRequired(const FCGIRequestData& requestData);
 
 	void sendSuccess(
 		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
@@ -272,15 +95,8 @@ protected:
 	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const string_view& errorMessage);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
-	static string getClientIPAddress(const unordered_map<string, string> &requestDetails);
-
-	static string getHtmlStandardMessage(int htmlResponseCode);
-
   private:
 	void loadConfiguration(json configurationRoot);
-	static void fillEnvironmentDetails(const char *const *envp, unordered_map<string, string> &requestDetails);
-
-	static void fillQueryString(const string &queryString, unordered_map<string, string> &queryParameters);
 
 	static string base64_encode(const string &in);
 

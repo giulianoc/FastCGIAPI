@@ -21,11 +21,13 @@
 # with the authors.
 
 SET (SOURCES
-	FastCGIAPI.cpp
+	    FastCGIAPI.cpp
+        FCGIRequestData.cpp
 )
 
 SET (HEADERS
-	FastCGIAPI.h
+	    FastCGIAPI.h
+        FCGIRequestData.h
 )
 
 include_directories("${NLOHMANN_INCLUDE_DIR}")
