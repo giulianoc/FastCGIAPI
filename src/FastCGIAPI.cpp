@@ -29,8 +29,6 @@ void FastCGIAPI::init(const json &configurationRoot, mutex *fcgiAcceptMutex)
 			_hostName = unUtsname.nodename;
 	}
 
-	_requestIdentifier = 0;
-
 	loadConfiguration(configurationRoot);
 }
 
@@ -72,23 +70,19 @@ int FastCGIAPI::operator()()
 
 	while (!_shutdown)
 	{
-		_requestIdentifier++;
-
 		int returnAcceptCode;
 		{
 			SPDLOG_TRACE(
 				"FastCGIAPI::ready"
-				", _requestIdentifier: {}"
 				", threadId: {}",
-				_requestIdentifier, sThreadId
+				sThreadId
 			);
 			lock_guard<mutex> locker(*_fcgiAcceptMutex);
 
 			SPDLOG_TRACE(
 				"FastCGIAPI::listen"
-				", _requestIdentifier: {}"
 				", threadId: {}",
-				_requestIdentifier, sThreadId
+				sThreadId
 			);
 
 			if (_shutdown)
@@ -98,10 +92,9 @@ int FastCGIAPI::operator()()
 		}
 		SPDLOG_TRACE(
 			"FCGX_Accept_r"
-			", _requestIdentifier: {}"
 			", threadId: {}"
 			", returnAcceptCode: {}",
-			_requestIdentifier, sThreadId, returnAcceptCode
+			sThreadId, returnAcceptCode
 		);
 
 		if (returnAcceptCode != 0)
@@ -117,9 +110,8 @@ int FastCGIAPI::operator()()
 
 		SPDLOG_TRACE(
 			"Request to be managed"
-			", _requestIdentifier: {}"
 			", threadId: {}",
-			_requestIdentifier, sThreadId
+			sThreadId
 		);
 
 		FCGIRequestData requestData;
@@ -152,10 +144,9 @@ int FastCGIAPI::operator()()
 				{
 					SPDLOG_ERROR(
 						"No 'Basic' authorization is present into the request"
-						", _requestIdentifier: {}"
 						", threadId: {}"
 						", Authorization: {}",
-						_requestIdentifier, sThreadId, authorization
+						sThreadId, authorization
 					);
 
 					throw FCGIRequestData::HTTPError(401);
@@ -168,11 +159,10 @@ int FastCGIAPI::operator()()
 				{
 					SPDLOG_ERROR(
 						"Wrong Authorization format"
-						", _requestIdentifier: {}"
 						", threadId: {}"
 						", usernameAndPasswordBase64: {}"
 						", usernameAndPassword: {}",
-						_requestIdentifier, sThreadId, usernameAndPasswordBase64, usernameAndPassword
+						sThreadId, usernameAndPasswordBase64, usernameAndPassword
 					);
 
 					throw FCGIRequestData::HTTPError(401);
@@ -187,10 +177,9 @@ int FastCGIAPI::operator()()
 			{
 				SPDLOG_ERROR(
 					"checkAuthorization failed"
-					", _requestIdentifier: {}"
 					", threadId: {}"
 					", e.what(): {}",
-					_requestIdentifier, sThreadId, e.what()
+					sThreadId, e.what()
 				);
 
 				int htmlResponseCode = 500;
@@ -213,16 +202,15 @@ int FastCGIAPI::operator()()
 		chrono::system_clock::time_point startManageRequest = chrono::system_clock::now();
 		try
 		{
-			manageRequestAndResponse(sThreadId, _requestIdentifier, request, requestData);
+			manageRequestAndResponse(sThreadId, request, requestData);
 		}
 		catch (exception &e)
 		{
 			SPDLOG_ERROR(
 				"manageRequestAndResponse failed"
-				", _requestIdentifier: {}"
 				", threadId: {}"
 				", exception: {}",
-				_requestIdentifier, sThreadId, e.what()
+				sThreadId, e.what()
 			);
 		}
 		{
@@ -232,23 +220,21 @@ int FastCGIAPI::operator()()
 			if (!requestData.requestURI.ends_with("/status"))
 				SPDLOG_INFO(
 					"manageRequestAndResponse"
-					", _requestIdentifier: {}"
 					", threadId: {}"
 					", clientIPAddress: @{}@"
 					", method: @{}@"
 					", requestURI: {}"
 					", authorizationPresent: {}"
 					", @MMS statistics@ - manageRequestDuration (millisecs): @{}@",
-					_requestIdentifier, sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
+					sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
 					chrono::duration_cast<chrono::milliseconds>(endManageRequest - startManageRequest).count()
 				);
 		}
 
 		SPDLOG_TRACE(
 			"FastCGIAPI::request finished"
-			", _requestIdentifier: {}"
 			", threadId: {}",
-			_requestIdentifier, sThreadId
+			sThreadId
 		);
 
 		if (!_fcgxFinishDone)
@@ -267,7 +253,7 @@ int FastCGIAPI::operator()()
 }
 
 bool FastCGIAPI::handleRequest(
-	const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request,
+	const string_view &sThreadId, FCGX_Request &request,
 	const FCGIRequestData& requestData, const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
@@ -278,11 +264,10 @@ bool FastCGIAPI::handleRequest(
 		{
 			string errorMessage = std::format(
 				"request is not managed because 'x-api-method' is missing"
-				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				requestIdentifier, sThreadId, requestData.requestURI, requestData.requestMethod);
+				sThreadId, requestData.requestURI, requestData.requestMethod);
 			SPDLOG_ERROR(errorMessage);
 			throw runtime_error(errorMessage);
 		}
@@ -296,18 +281,17 @@ bool FastCGIAPI::handleRequest(
 		{
 			string errorMessage = std::format(
 				"request is not managed because no registration found for method {}"
-				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}",
-				method, requestIdentifier, sThreadId, requestData.requestURI, requestData.requestMethod);
+				method, sThreadId, requestData.requestURI, requestData.requestMethod);
 			SPDLOG_ERROR(errorMessage);
 			throw runtime_error(errorMessage);
 		}
 		return true; // request not managed
 	}
 
-	handlerIt->second(sThreadId, requestIdentifier, request, requestData);
+	handlerIt->second(sThreadId, request, requestData);
 
 	return false;
 }
@@ -322,7 +306,7 @@ bool FastCGIAPI::basicAuthenticationRequired(const FCGIRequestData& requestData)
 }
 
 void FastCGIAPI::sendSuccess(
-	const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
+	const string_view& sThreadId, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
 	const string_view& requestMethod, int htmlResponseCode, const string_view& responseBody, const string_view& contentType, const string_view& cookieName,
 	const string_view& cookieValue, const string_view& cookiePath, bool enableCorsGETHeader, const string_view& originHeader
 )
@@ -336,12 +320,11 @@ void FastCGIAPI::sendSuccess(
 		// rispetto al segmentation fault
 		SPDLOG_ERROR(
 			"response was already done"
-			", requestIdentifier: {}"
 			", threadId: {}"
 			", requestURI: {}"
 			", requestMethod: {}"
 			", responseBody.size: @{}@",
-			requestIdentifier, sThreadId, requestURI, requestMethod, responseBody.size()
+			sThreadId, requestURI, requestMethod, responseBody.size()
 		);
 
 		return;
@@ -413,7 +396,6 @@ void FastCGIAPI::sendSuccess(
 
 		SPDLOG_INFO(
 			"sendSuccess"
-			", requestIdentifier: {}"
 			", threadId: {}"
 			", requestURI: {}"
 			", requestMethod: {}"
@@ -421,7 +403,7 @@ void FastCGIAPI::sendSuccess(
 			", responseBody.size: @{}@"
 			", compressedResponseBody.size: @{}@"
 			", headResponse: {}",
-			requestIdentifier, sThreadId, requestURI, requestMethod, headResponse.size(), responseBody.size(), contentLength, headResponse
+			sThreadId, requestURI, requestMethod, headResponse.size(), responseBody.size(), contentLength, headResponse
 		);
 
 		FCGX_PutStr(compressedResponseBody.data(), compressedResponseBody.size(), request.out);
@@ -470,14 +452,13 @@ void FastCGIAPI::sendSuccess(
 		if (!requestURI.ends_with("/status"))
 			SPDLOG_INFO(
 				"sendSuccess"
-				", requestIdentifier: {}"
 				", threadId: {}"
 				", requestURI: {}"
 				", requestMethod: {}"
 				", responseBody.size: @{}@"
 				", httpStatus: {}",
 				// ", completeHttpResponse: {}", spesso la response è troppo lunga, per cui logghiamo solo httpStatus
-				requestIdentifier, sThreadId, requestURI, requestMethod, responseBody.size(), httpStatus //, completeHttpResponse
+				sThreadId, requestURI, requestMethod, responseBody.size(), httpStatus //, completeHttpResponse
 			);
 
 		// si potrebbe usare anche FCGX_PutStr, in questo caso

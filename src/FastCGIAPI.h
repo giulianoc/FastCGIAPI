@@ -19,7 +19,6 @@ class FastCGIAPI
 
 	using Handler = function<void(
 		const string_view&, // sThreadId
-		int64_t, // requestIdentifier
 		FCGX_Request &, // request
 		const FCGIRequestData& // requestData
 	)>;
@@ -37,24 +36,25 @@ protected:
 	virtual ~FastCGIAPI();
 
   protected:
+	// ATTENZIONE, questa architettura è thread-safe ma NON request-safe perchè:
+	//	- thread-safe: ogni thread ha la sua istanza di FastCGIAPI
+	//	- non è request-safe: ogni richiesta NON ha la sua istanza di FastCGIAPI (1 istanza di FastCGIAPI gestisce N richieste)
+	// Lo stato memorizzato nei campi di FastCGIAPI viene riusato da più richieste,
+	// QUINDI non aggiungere qui campi per la singola richiesta
 	bool _shutdown{};
 
 	bool _fcgxFinishDone{};
 
-	int64_t _requestIdentifier{};
 	string _hostName;
 	int64_t _maxAPIContentLength{};
 	mutex *_fcgiAcceptMutex{};
 
 	unordered_map<std::string, Handler> _handlers;
 
-	virtual void manageRequestAndResponse(
-		const string_view& sThreadId, int64_t requestIdentifier, FCGX_Request &request,
-		const FCGIRequestData& requestData) = 0;
+	virtual void manageRequestAndResponse(const string_view& sThreadId, FCGX_Request &request, const FCGIRequestData& requestData) = 0;
 
-	virtual bool handleRequest(
-		const string_view &sThreadId, int64_t requestIdentifier, FCGX_Request &request, const FCGIRequestData &requestData, bool exceptionIfNotManaged
-	);
+	virtual bool handleRequest(const string_view &sThreadId, FCGX_Request &request,
+		const FCGIRequestData &requestData, bool exceptionIfNotManaged);
 
 	template <typename F>
 	void registerHandler(const string& name, F&& f)
@@ -84,7 +84,7 @@ protected:
 	virtual bool basicAuthenticationRequired(const FCGIRequestData& requestData);
 
 	void sendSuccess(
-		const string_view& sThreadId, int64_t requestIdentifier, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
+		const string_view& sThreadId, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
 		const string_view& requestMethod, int htmlResponseCode, const string_view& responseBody = "", const string_view& contentType = "",
 		const string_view& cookieName = "", const string_view& cookieValue = "",
 		const string_view& cookiePath= "", bool enableCorsGETHeader = false, const string_view& originHeader = ""
