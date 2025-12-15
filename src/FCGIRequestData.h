@@ -112,6 +112,9 @@ public:
 		return getOptMapParameter<T>(_queryParameters, parameterName);
 	}
 
+	unordered_map<string, string> getQueryParameters() const;
+	vector<pair<string, string>> getHeaders() const;
+
 	static void parseContentRange(string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
 private:

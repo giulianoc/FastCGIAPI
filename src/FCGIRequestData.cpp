@@ -347,3 +347,20 @@ void FCGIRequestData::fillQueryString(const string& queryString)
 		}
 	}
 }
+
+unordered_map<string, string> FCGIRequestData::getQueryParameters() const
+{
+	return _queryParameters;
+}
+
+vector<pair<string, string>> FCGIRequestData::getHeaders() const
+{
+	vector<pair<string, string>> headers;
+	for (const auto &[key, value]: _requestDetails)
+	{
+		if (key.starts_with("HTTP_"))
+			headers.emplace_back(StringUtils::replaceAll(StringUtils::lowerCase(key.substr(5)), "_", "-"),
+				value);
+	}
+	return headers;
+}
