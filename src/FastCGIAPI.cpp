@@ -171,7 +171,7 @@ int FastCGIAPI::operator()()
 				string userName = usernameAndPassword.substr(0, userNameSeparator);
 				string password = usernameAndPassword.substr(userNameSeparator + 1);
 
-				requestData.authorizationDetails = checkAuthorization(sThreadId, userName, password);
+				requestData.authorizationDetails = checkAuthorization(sThreadId, requestData, userName, password);
 			}
 			catch (exception &e)
 			{

@@ -79,7 +79,7 @@ protected:
 	*/
 
 	virtual shared_ptr<FCGIRequestData::AuthorizationDetails> checkAuthorization(const string_view& sThreadId,
-		const string_view& userName, const string_view& password) = 0;
+		const FCGIRequestData& requestData, const string_view& userName, const string_view& password) = 0;
 
 	virtual bool basicAuthenticationRequired(const FCGIRequestData& requestData);
 
