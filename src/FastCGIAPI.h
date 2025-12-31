@@ -10,15 +10,13 @@
 #include "JSONUtils.h"
 // #include "fcgi_stdio.h"
 
-using namespace std;
-
 
 class FastCGIAPI
 {
   public:
 
-	using Handler = function<void(
-		const string_view&, // sThreadId
+	using Handler = std::function<void(
+		const std::string_view&, // sThreadId
 		FCGX_Request &, // request
 		const FCGIRequestData& // requestData
 	)>;
@@ -29,9 +27,9 @@ class FastCGIAPI
 
 protected:
 
-	FastCGIAPI(const json& configuration, mutex *fcgiAcceptMutex);
+	FastCGIAPI(const nlohmann::json& configuration, std::mutex *fcgiAcceptMutex);
 
-	void init(const json &configuration, mutex *fcgiAcceptMutex);
+	void init(const nlohmann::json &configuration, std::mutex *fcgiAcceptMutex);
 
 	virtual ~FastCGIAPI();
 
@@ -45,19 +43,19 @@ protected:
 
 	bool _fcgxFinishDone{};
 
-	string _hostName;
+	std::string _hostName;
 	int64_t _maxAPIContentLength{};
-	mutex *_fcgiAcceptMutex{};
+	std::mutex *_fcgiAcceptMutex{};
 
-	unordered_map<std::string, Handler> _handlers;
+	std::unordered_map<std::string, Handler> _handlers;
 
-	virtual void manageRequestAndResponse(const string_view& sThreadId, FCGX_Request &request, const FCGIRequestData& requestData) = 0;
+	virtual void manageRequestAndResponse(const std::string_view& sThreadId, FCGX_Request &request, const FCGIRequestData& requestData) = 0;
 
-	virtual bool handleRequest(const string_view &sThreadId, FCGX_Request &request,
+	virtual bool handleRequest(const std::string_view &sThreadId, FCGX_Request &request,
 		const FCGIRequestData &requestData, bool exceptionIfNotManaged);
 
 	template <typename F>
-	void registerHandler(const string& name, F&& f)
+	void registerHandler(const std::string& name, F&& f)
 	{
 		_handlers[name] = std::forward<F>(f);
 	}
@@ -78,27 +76,27 @@ protected:
 	}
 	*/
 
-	virtual shared_ptr<FCGIRequestData::AuthorizationDetails> checkAuthorization(const string_view& sThreadId,
-		const FCGIRequestData& requestData, const string_view& userName, const string_view& password) = 0;
+	virtual std::shared_ptr<FCGIRequestData::AuthorizationDetails> checkAuthorization(const std::string_view& sThreadId,
+		const FCGIRequestData& requestData, const std::string_view& userName, const std::string_view& password) = 0;
 
 	virtual bool basicAuthenticationRequired(const FCGIRequestData& requestData);
 
 	void sendSuccess(
-		const string_view& sThreadId, bool responseBodyCompressed, FCGX_Request &request, const string_view& requestURI,
-		const string_view& requestMethod, int htmlResponseCode, const string_view& responseBody = "", const string_view& contentType = "",
-		const string_view& cookieName = "", const string_view& cookieValue = "",
-		const string_view& cookiePath= "", bool enableCorsGETHeader = false, const string_view& originHeader = ""
+		const std::string_view& sThreadId, bool responseBodyCompressed, FCGX_Request &request, const std::string_view& requestURI,
+		const std::string_view& requestMethod, int htmlResponseCode, const std::string_view& responseBody = "", const std::string_view& contentType = "",
+		const std::string_view& cookieName = "", const std::string_view& cookieValue = "",
+		const std::string_view& cookiePath= "", bool enableCorsGETHeader = false, const std::string_view& originHeader = ""
 	);
-	void sendRedirect(FCGX_Request &request, const string_view& locationURL, bool permanently, const string_view& contentType = "");
+	void sendRedirect(FCGX_Request &request, const std::string_view& locationURL, bool permanently, const std::string_view& contentType = "");
 	void sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, unsigned long fileSize);
 	static void sendHeadSuccess(int htmlResponseCode, unsigned long fileSize);
-	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const string_view& errorMessage);
+	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const std::string_view& errorMessage);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
   private:
-	void loadConfiguration(json configurationRoot);
+	void loadConfiguration(nlohmann::json configurationRoot);
 
-	static string base64_encode(const string &in);
+	static std::string base64_encode(const std::string &in);
 
-	static string base64_decode(const string &in);
+	static std::string base64_decode(const std::string &in);
 };

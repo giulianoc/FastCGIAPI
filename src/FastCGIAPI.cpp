@@ -11,6 +11,10 @@
 
 extern char **environ;
 
+using namespace std;
+using json = nlohmann::json;
+using ordered_json = nlohmann::ordered_json;
+
 FastCGIAPI::FastCGIAPI(const json& configurationRoot, mutex *fcgiAcceptMutex) { init(configurationRoot, fcgiAcceptMutex); }
 
 FastCGIAPI::~FastCGIAPI() = default;

@@ -5,6 +5,8 @@
 #include "FCGIRequestData.h"
 #include <curl/curl.h>
 
+using namespace std;
+
 void FCGIRequestData::init(const FCGX_Request & request, int64_t& maxAPIContentLength)
 {
  	try
