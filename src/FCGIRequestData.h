@@ -146,7 +146,18 @@ private:
 				return unescape(firstDecoding);
 			}
 			else
-				parameterValue = StringUtils::getValue<T>(it->second);
+			{
+				try
+				{
+					parameterValue = StringUtils::getValue<T>(it->second);
+				}
+				catch (const std::exception &e)
+				{
+					SPDLOG_ERROR("StringUtils::getValue failed"
+						", parameterName: {}"
+						", exception: {}", parameterName, e.what());
+				}
+			}
 
 			return parameterValue;
 		}
@@ -190,7 +201,18 @@ private:
 				return unescape(firstDecoding);
 			}
 			else
-				parameterValue = StringUtils::getValue<T>(it->second);
+			{
+				try
+				{
+					parameterValue = StringUtils::getValue<T>(it->second);
+				}
+				catch (const std::exception &e)
+				{
+					SPDLOG_ERROR("StringUtils::getValue failed"
+						", parameterName: {}"
+						", exception: {}", parameterName, e.what());
+				}
+			}
 		}
 		else
 		{
@@ -228,10 +250,19 @@ private:
 			{
 				if (!token.empty())
 				{
-					if constexpr (std::is_same_v<C<T>, std::vector<T>>)
-						parameterValue.push_back(StringUtils::getValue<T>(token));
-					else
-						parameterValue.insert(StringUtils::getValue<T>(token));
+					try
+					{
+						if constexpr (std::is_same_v<C<T>, std::vector<T>>)
+							parameterValue.push_back(StringUtils::getValue<T>(token));
+						else
+							parameterValue.insert(StringUtils::getValue<T>(token));
+					}
+					catch (const std::exception &e)
+					{
+						SPDLOG_ERROR("StringUtils::getValue failed"
+							", parameterName: {}"
+							", exception: {}", parameterName, e.what());
+					}
 				}
 			}
 		}
