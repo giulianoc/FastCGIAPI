@@ -671,6 +671,8 @@ string FastCGIAPI::base64_decode(const string &in)
 	int val = 0, valb = -8;
 	for (unsigned char c : in)
 	{
+		if (c == ' ')
+			c = '+';
 		if (T[c] == -1)
 			break;
 		val = (val << 6) + T[c];
