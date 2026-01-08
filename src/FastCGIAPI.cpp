@@ -157,6 +157,10 @@ int FastCGIAPI::operator()()
 
 				string usernameAndPasswordBase64 = authorization.substr(authorizationPrefix.length());
 				string usernameAndPassword = base64_decode(usernameAndPasswordBase64);
+				SPDLOG_TRACE("Credentials"
+					", usernameAndPasswordBase64: {}"
+					", usernameAndPassword: {}", usernameAndPasswordBase64, usernameAndPassword
+					);
 				size_t userNameSeparator = usernameAndPassword.find(':');
 				if (userNameSeparator == string::npos)
 				{
