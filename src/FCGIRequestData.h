@@ -110,8 +110,8 @@ public:
 		return getOptMapParameter<T>(_queryParameters, parameterName);
 	}
 
-	std::unordered_map<std::string, std::string> getQueryParameters() const;
-	std::vector<std::pair<std::string, std::string>> getHeaders() const;
+	[[nodiscard]] std::unordered_map<std::string, std::string> getQueryParameters() const;
+	[[nodiscard]] std::vector<std::pair<std::string, std::string>> getHeaders() const;
 
 	static void parseContentRange(std::string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
 
@@ -156,7 +156,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
-					throw;
+					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 				}
 			}
 
@@ -212,7 +212,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
-					throw;
+					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 				}
 			}
 		}
@@ -264,7 +264,7 @@ private:
 						SPDLOG_ERROR("StringUtils::getValue failed"
 							", parameterName: {}"
 							", exception: {}", parameterName, e.what());
-						throw;
+						throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 					}
 				}
 			}
