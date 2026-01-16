@@ -156,6 +156,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
+					throw;
 				}
 			}
 
@@ -211,6 +212,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
+					throw;
 				}
 			}
 		}
@@ -262,6 +264,7 @@ private:
 						SPDLOG_ERROR("StringUtils::getValue failed"
 							", parameterName: {}"
 							", exception: {}", parameterName, e.what());
+						throw;
 					}
 				}
 			}
