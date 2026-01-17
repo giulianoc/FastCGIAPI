@@ -156,6 +156,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
+					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 				}
 			}
 
@@ -211,6 +212,7 @@ private:
 					SPDLOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
+					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 				}
 			}
 		}
@@ -262,6 +264,7 @@ private:
 						SPDLOG_ERROR("StringUtils::getValue failed"
 							", parameterName: {}"
 							", exception: {}", parameterName, e.what());
+						throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
 					}
 				}
 			}
