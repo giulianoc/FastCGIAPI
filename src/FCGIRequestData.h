@@ -222,8 +222,9 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				SPDLOG_ERROR("Missing mandatory header/query parameter: {}", parameterName);
-				throw HTTPError(400);
+				const std::string errorMessage = std::format("Missing mandatory parameter: {}", parameterName);
+				SPDLOG_ERROR(errorMessage);
+				throw HTTPError(400, errorMessage);
 			}
 
 			parameterValue = std::move(defaultParameter);
@@ -275,8 +276,9 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
-				throw HTTPError(400);
+				const std::string errorMessage = std::format("Missing mandatory parameter: {}", parameterName);
+				SPDLOG_ERROR(errorMessage);
+				throw HTTPError(400, errorMessage);
 			}
 
 			parameterValue = std::move(defaultParameter);
