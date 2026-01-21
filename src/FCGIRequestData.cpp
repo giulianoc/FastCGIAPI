@@ -33,7 +33,7 @@ void FCGIRequestData::init(const FCGX_Request & request, int64_t& maxAPIContentL
 					 ", _maxAPIContentLength: {}",
 					 contentLength, maxAPIContentLength
 				 );
- 				SPDLOG_ERROR(errorMessage);
+ 				LOG_ERROR(errorMessage);
 
  				throw runtime_error(errorMessage);
  			}
@@ -58,7 +58,7 @@ void FCGIRequestData::init(const FCGX_Request & request, int64_t& maxAPIContentL
  	}
  	catch (exception &e)
  	{
- 		SPDLOG_ERROR("FCGIRequestData failed"
+ 		LOG_ERROR("FCGIRequestData failed"
  			", exception: {}", e.what()
  		);
  		throw;
@@ -70,7 +70,7 @@ string FCGIRequestData::escape(const string &url)
 	CURL *curl = curl_easy_init();
 	if (!curl)
 	{
-		SPDLOG_ERROR("curl_easy_init failed");
+		LOG_ERROR("curl_easy_init failed");
 
 		throw runtime_error("curl_easy_init failed");
 	}
@@ -78,7 +78,7 @@ string FCGIRequestData::escape(const string &url)
 	char *encoded = curl_easy_escape(curl, url.c_str(), url.size());
 	if (!encoded)
 	{
-		SPDLOG_ERROR("curl_easy_escape failed");
+		LOG_ERROR("curl_easy_escape failed");
 		curl_easy_cleanup(curl);
 		throw runtime_error("curl_easy_escape failed");
 	}
@@ -97,7 +97,7 @@ string FCGIRequestData::unescape(const string &url)
 	CURL *curl = curl_easy_init();
 	if (!curl)
 	{
-		SPDLOG_ERROR("curl_easy_init failed");
+		LOG_ERROR("curl_easy_init failed");
 
 		throw runtime_error("curl_easy_init failed");
 	}
@@ -106,7 +106,7 @@ string FCGIRequestData::unescape(const string &url)
 	char *decoded = curl_easy_unescape(curl, url.c_str(), url.size(), &decodelen);
 	if (!decoded)
 	{
-		SPDLOG_ERROR("curl_easy_unescape failed");
+		LOG_ERROR("curl_easy_unescape failed");
 		curl_easy_cleanup(curl);
 		throw runtime_error("curl_easy_unescape failed");
 	}
@@ -134,7 +134,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 				", contentRange: {}",
 				contentRange
 			);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 
 			throw runtime_error(errorMessage);
 		}
@@ -157,7 +157,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 			", contentRange: {}",
 			contentRange
 		);
-		SPDLOG_ERROR(errorMessage);
+		LOG_ERROR(errorMessage);
 
 		throw runtime_error(errorMessage);
 	}
@@ -178,7 +178,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 				", contentRange: {}",
 				contentRange
 			);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 
 			throw runtime_error(errorMessage);
 		}
@@ -192,7 +192,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 				", contentRange: {}",
 				contentRange
 			);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 
 			throw runtime_error(errorMessage);
 		}
@@ -208,7 +208,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 				", contentRange: {}",
 				contentRange
 			);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 
 			throw runtime_error(errorMessage);
 		}
@@ -225,7 +225,7 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 			", contentRange: {}",
 			contentRange
 		);
-		SPDLOG_ERROR(errorMessage);
+		LOG_ERROR(errorMessage);
 
 		throw runtime_error(errorMessage);
 	}
@@ -266,7 +266,7 @@ string FCGIRequestData::getHtmlStandardMessage(int htmlResponseCode)
 			 ", htmlResponseCode: {}",
 			 htmlResponseCode
 		 );
- 		SPDLOG_ERROR(errorMessage);
+ 		LOG_ERROR(errorMessage);
 
  		throw runtime_error(errorMessage);
  	}
@@ -282,7 +282,7 @@ void FCGIRequestData::fillEnvironmentDetails(const char *const *envp)
 
 		if ((valueIndex = environmentKeyValue.find('=')) == string::npos)
 		{
-			SPDLOG_ERROR(
+			LOG_ERROR(
 				"Unexpected environment variable"
 				", environmentKeyValue: {}",
 				environmentKeyValue
@@ -297,13 +297,13 @@ void FCGIRequestData::fillEnvironmentDetails(const char *const *envp)
 		_requestDetails.emplace(key, value);
 
 		if (key == "REQUEST_URI")
-			SPDLOG_TRACE(
+			LOG_TRACE(
 				"Environment variable"
 				", key/Name: {}={}",
 				key, value
 			);
 		else
-			SPDLOG_TRACE(
+			LOG_TRACE(
 				"Environment variable"
 				", key/Name: {}={}",
 				key, value
@@ -327,7 +327,7 @@ void FCGIRequestData::fillQueryString(const string& queryString)
 
 			if ((keySeparator = token.find('=')) == string::npos)
 			{
-				SPDLOG_ERROR(
+				LOG_ERROR(
 					"Wrong query parameter format"
 					", token: {}",
 					token
@@ -341,7 +341,7 @@ void FCGIRequestData::fillQueryString(const string& queryString)
 
 			_queryParameters[key] = value;
 
-			SPDLOG_TRACE(
+			LOG_TRACE(
 				"Query parameter"
 				", key/Name: {}={}",
 				key, value

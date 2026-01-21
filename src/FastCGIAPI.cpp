@@ -38,7 +38,7 @@ void FastCGIAPI::init(const json &configurationRoot, mutex *fcgiAcceptMutex)
 void FastCGIAPI::loadConfiguration(json configurationRoot)
 {
 	_maxAPIContentLength = JSONUtils::asInt64(configurationRoot["api"], "maxContentLength", static_cast<int64_t>(0));
-	SPDLOG_TRACE(
+	LOG_TRACE(
 		"Configuration item"
 		", api->maxContentLength: {}",
 		_maxAPIContentLength
@@ -63,7 +63,7 @@ int FastCGIAPI::operator()()
 	// calls The nginx process is configured to proxy the requests to
 	// 127.0.0.1:<port> specified by spawn-fcgi
 	int sock_fd = 0;
-	SPDLOG_TRACE(
+	LOG_TRACE(
 		"FastCGIAPI::FCGX_OpenSocket"
 		", threadId: {}"
 		", sock_fd: {}",
@@ -75,14 +75,14 @@ int FastCGIAPI::operator()()
 	{
 		int returnAcceptCode;
 		{
-			SPDLOG_TRACE(
+			LOG_TRACE(
 				"FastCGIAPI::ready"
 				", threadId: {}",
 				sThreadId
 			);
 			lock_guard<mutex> locker(*_fcgiAcceptMutex);
 
-			SPDLOG_TRACE(
+			LOG_TRACE(
 				"FastCGIAPI::listen"
 				", threadId: {}",
 				sThreadId
@@ -93,7 +93,7 @@ int FastCGIAPI::operator()()
 
 			returnAcceptCode = FCGX_Accept_r(&request);
 		}
-		SPDLOG_TRACE(
+		LOG_TRACE(
 			"FCGX_Accept_r"
 			", threadId: {}"
 			", returnAcceptCode: {}",
@@ -111,7 +111,7 @@ int FastCGIAPI::operator()()
 
 		_fcgxFinishDone = false;
 
-		SPDLOG_TRACE(
+		LOG_TRACE(
 			"Request to be managed"
 			", threadId: {}",
 			sThreadId
@@ -124,7 +124,7 @@ int FastCGIAPI::operator()()
 		}
 		catch (exception &e)
 		{
-			SPDLOG_ERROR(e.what());
+			LOG_ERROR(e.what());
 
 			sendError(request, 500, e.what());
 
@@ -145,7 +145,7 @@ int FastCGIAPI::operator()()
 				string authorizationPrefix = "Basic ";
 				if (!authorization.starts_with(authorizationPrefix))
 				{
-					SPDLOG_ERROR(
+					LOG_ERROR(
 						"No 'Basic' authorization is present into the request"
 						", threadId: {}"
 						", Authorization: {}",
@@ -157,14 +157,14 @@ int FastCGIAPI::operator()()
 
 				string usernameAndPasswordBase64 = authorization.substr(authorizationPrefix.length());
 				string usernameAndPassword = base64_decode(usernameAndPasswordBase64);
-				SPDLOG_TRACE("Credentials"
+				LOG_TRACE("Credentials"
 					", usernameAndPasswordBase64: {}"
 					", usernameAndPassword: {}", usernameAndPasswordBase64, usernameAndPassword
 					);
 				size_t userNameSeparator = usernameAndPassword.find(':');
 				if (userNameSeparator == string::npos)
 				{
-					SPDLOG_ERROR(
+					LOG_ERROR(
 						"Wrong Authorization format"
 						", threadId: {}"
 						", usernameAndPasswordBase64: {}"
@@ -182,7 +182,7 @@ int FastCGIAPI::operator()()
 			}
 			catch (exception &e)
 			{
-				SPDLOG_ERROR(
+				LOG_ERROR(
 					"checkAuthorization failed"
 					", threadId: {}"
 					", e.what(): {}",
@@ -194,7 +194,7 @@ int FastCGIAPI::operator()()
 					htmlResponseCode = dynamic_cast<FCGIRequestData::HTTPError*>(&e)->httpErrorCode;
 
 				string errorMessage = FCGIRequestData::getHtmlStandardMessage(htmlResponseCode);
-				SPDLOG_ERROR(errorMessage);
+				LOG_ERROR(errorMessage);
 
 				sendError(request, htmlResponseCode, errorMessage); // unauthorized
 
@@ -213,7 +213,7 @@ int FastCGIAPI::operator()()
 		}
 		catch (exception &e)
 		{
-			SPDLOG_ERROR(
+			LOG_ERROR(
 				"manageRequestAndResponse failed"
 				", threadId: {}"
 				", exception: {}",
@@ -225,7 +225,7 @@ int FastCGIAPI::operator()()
 
 			chrono::system_clock::time_point endManageRequest = chrono::system_clock::now();
 			if (!requestData.requestURI.ends_with("/status"))
-				SPDLOG_INFO(
+				LOG_INFO(
 					"manageRequestAndResponse"
 					", threadId: {}"
 					", clientIPAddress: @{}@"
@@ -238,7 +238,7 @@ int FastCGIAPI::operator()()
 				);
 		}
 
-		SPDLOG_TRACE(
+		LOG_TRACE(
 			"FastCGIAPI::request finished"
 			", threadId: {}",
 			sThreadId
@@ -250,7 +250,7 @@ int FastCGIAPI::operator()()
 		// Note: the fcgi_streambuf destructor will auto flush
 	}
 
-	SPDLOG_INFO(
+	LOG_INFO(
 		"FastCGIAPI shutdown"
 		", threadId: {}",
 		sThreadId
@@ -275,7 +275,7 @@ bool FastCGIAPI::handleRequest(
 				", requestURI: {}"
 				", requestMethod: {}",
 				sThreadId, requestData.requestURI, requestData.requestMethod);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 			throw runtime_error(errorMessage);
 		}
 		return true; // request not managed
@@ -292,7 +292,7 @@ bool FastCGIAPI::handleRequest(
 				", requestURI: {}"
 				", requestMethod: {}",
 				method, sThreadId, requestData.requestURI, requestData.requestMethod);
-			SPDLOG_ERROR(errorMessage);
+			LOG_ERROR(errorMessage);
 			throw runtime_error(errorMessage);
 		}
 		return true; // request not managed
@@ -325,7 +325,7 @@ void FastCGIAPI::sendSuccess(
 		// provocherebbe un segmentation fault perchè probabilmente request.out è
 		// stato resettato nella prima chiamata Questo controllo è una protezione
 		// rispetto al segmentation fault
-		SPDLOG_ERROR(
+		LOG_ERROR(
 			"response was already done"
 			", threadId: {}"
 			", requestURI: {}"
@@ -401,7 +401,7 @@ void FastCGIAPI::sendSuccess(
 
 		FCGX_FPrintF(request.out, headResponse.c_str());
 
-		SPDLOG_INFO(
+		LOG_INFO(
 			"sendSuccess"
 			", threadId: {}"
 			", requestURI: {}"
@@ -457,7 +457,7 @@ void FastCGIAPI::sendSuccess(
 		}
 
 		if (!requestURI.ends_with("/status"))
-			SPDLOG_INFO(
+			LOG_INFO(
 				"sendSuccess"
 				", threadId: {}"
 				", requestURI: {}"
@@ -487,7 +487,7 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 		// provocherebbe un segmentation fault perchè probabilmente request.out è
 		// stato resettato nella prima chiamata Questo controllo è una protezione
 		// rispetto al segmentation fault
-		SPDLOG_ERROR("response was already done");
+		LOG_ERROR("response was already done");
 
 		return;
 	}
@@ -506,7 +506,7 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 	else
 		completeHttpResponse += endLine;
 
-	SPDLOG_INFO(
+	LOG_INFO(
 		"HTTP Success"
 		", response: {}",
 		completeHttpResponse
@@ -527,7 +527,7 @@ void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, un
 		// provocherebbe un segmentation fault perchè probabilmente request.out è
 		// stato resettato nella prima chiamata Questo controllo è una protezione
 		// rispetto al segmentation fault
-		SPDLOG_ERROR("response was already done");
+		LOG_ERROR("response was already done");
 
 		return;
 	}
@@ -543,7 +543,7 @@ void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, un
 		httpStatus, fileSize, endLine, endLine
 	);
 
-	SPDLOG_INFO(
+	LOG_INFO(
 		"HTTP HEAD Success"
 		", response: {}",
 		completeHttpResponse
@@ -569,7 +569,7 @@ void FastCGIAPI::sendHeadSuccess(int htmlResponseCode, unsigned long fileSize)
 		httpStatus, fileSize, endLine, endLine
 	);
 
-	SPDLOG_INFO(
+	LOG_INFO(
 		"HTTP HEAD Success"
 		", response: {}",
 		completeHttpResponse
@@ -585,7 +585,7 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 		// provocherebbe un segmentation fault perchè probabilmente request.out è
 		// stato resettato nella prima chiamata Questo controllo è una protezione
 		// rispetto al segmentation fault
-		SPDLOG_ERROR("response was already done");
+		LOG_ERROR("response was already done");
 
 		return;
 	}
@@ -626,7 +626,7 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 		httpStatus, endLine, contentLength, endLine, endLine, localResponseBody
 	);
 
-	SPDLOG_INFO(
+	LOG_INFO(
 		"HTTP Error"
 		", response: {}",
 		completeHttpResponse

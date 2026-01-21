@@ -5,9 +5,6 @@
 #pragma once
 
 #include "StringUtils.h"
-#ifndef SPDLOG_ACTIVE_LEVEL
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
-#endif
 #include "spdlog/spdlog.h"
 #include <fcgiapp.h>
 #include <string>
@@ -153,7 +150,7 @@ private:
 				}
 				catch (const std::exception &e)
 				{
-					SPDLOG_ERROR("StringUtils::getValue failed"
+					LOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
 					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
@@ -209,7 +206,7 @@ private:
 				}
 				catch (const std::exception &e)
 				{
-					SPDLOG_ERROR("StringUtils::getValue failed"
+					LOG_ERROR("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
 					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
@@ -222,7 +219,7 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				SPDLOG_ERROR("Missing mandatory header/query parameter: {}", parameterName);
+				LOG_ERROR("Missing mandatory header/query parameter: {}", parameterName);
 				throw HTTPError(400);
 			}
 
@@ -261,7 +258,7 @@ private:
 					}
 					catch (const std::exception &e)
 					{
-						SPDLOG_ERROR("StringUtils::getValue failed"
+						LOG_ERROR("StringUtils::getValue failed"
 							", parameterName: {}"
 							", exception: {}", parameterName, e.what());
 						throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
@@ -275,7 +272,7 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				SPDLOG_ERROR("Missing mandatory query parameter: {}", parameterName);
+				LOG_ERROR("Missing mandatory query parameter: {}", parameterName);
 				throw HTTPError(400);
 			}
 
