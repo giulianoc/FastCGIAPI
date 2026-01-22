@@ -220,22 +220,20 @@ int FastCGIAPI::operator()()
 				sThreadId, e.what()
 			);
 		}
+		if (!requestData.requestURI.ends_with("/status"))
 		{
 			auto method = requestData.getQueryParameter("x-api-method", "", false);
-
-			chrono::system_clock::time_point endManageRequest = chrono::system_clock::now();
-			if (!requestData.requestURI.ends_with("/status"))
-				LOG_INFO(
-					"manageRequestAndResponse"
-					", threadId: {}"
-					", clientIPAddress: @{}@"
-					", method: @{}@"
-					", requestURI: {}"
-					", authorizationPresent: {}"
-					", @MMS statistics@ - manageRequestDuration (millisecs): @{}@",
-					sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
-					chrono::duration_cast<chrono::milliseconds>(endManageRequest - startManageRequest).count()
-				);
+			LOG_DEBUG(
+				"manageRequestAndResponse"
+				", threadId: {}"
+				", clientIPAddress: @{}@"
+				", method: @{}@"
+				", requestURI: {}"
+				", authorizationPresent: {}"
+				", @MMS statistics@ - manageRequestDuration (millisecs): @{}@",
+				sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
+				chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - startManageRequest).count()
+			);
 		}
 
 		LOG_TRACE(
