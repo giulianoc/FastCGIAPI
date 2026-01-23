@@ -206,34 +206,38 @@ int FastCGIAPI::operator()()
 			}
 		}
 
-		chrono::system_clock::time_point startManageRequest = chrono::system_clock::now();
-		try
 		{
-			manageRequestAndResponse(sThreadId, request, requestData);
-		}
-		catch (exception &e)
-		{
-			LOG_ERROR(
-				"manageRequestAndResponse failed"
-				", threadId: {}"
-				", exception: {}",
-				sThreadId, e.what()
-			);
-		}
-		if (!requestData.requestURI.ends_with("/status"))
-		{
-			auto method = requestData.getQueryParameter("x-api-method", "", false);
-			LOG_DEBUG(
-				"manageRequestAndResponse"
-				", threadId: {}"
-				", clientIPAddress: @{}@"
-				", method: @{}@"
-				", requestURI: {}"
-				", authorizationPresent: {}"
-				", @MMS statistics@ - manageRequestDuration (millisecs): @{}@",
-				sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
-				chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - startManageRequest).count()
-			);
+			shared_ptr<ThreadLogger> threadLogger = requestThreadLogger(requestData);
+
+			chrono::system_clock::time_point startManageRequest = chrono::system_clock::now();
+			try
+			{
+				manageRequestAndResponse(sThreadId, request, requestData);
+			}
+			catch (exception &e)
+			{
+				LOG_ERROR(
+					"manageRequestAndResponse failed"
+					", threadId: {}"
+					", exception: {}",
+					sThreadId, e.what()
+				);
+			}
+			if (!requestData.requestURI.ends_with("/status"))
+			{
+				auto method = requestData.getQueryParameter("x-api-method", "", false);
+				LOG_INFO(
+					"manageRequestAndResponse"
+					", threadId: {}"
+					", clientIPAddress: @{}@"
+					", method: @{}@"
+					", requestURI: {}"
+					", authorizationPresent: {}"
+					", @MMS statistics@ - manageRequestDuration (millisecs): @{}@",
+					sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent,
+					chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - startManageRequest).count()
+				);
+			}
 		}
 
 		LOG_TRACE(
@@ -308,6 +312,11 @@ bool FastCGIAPI::basicAuthenticationRequired(const FCGIRequestData& requestData)
 	bool basicAuthenticationRequired = true;
 
 	return basicAuthenticationRequired;
+}
+
+std::shared_ptr<ThreadLogger> FastCGIAPI::requestThreadLogger(const FCGIRequestData& requestData)
+{
+	return nullptr;
 }
 
 void FastCGIAPI::sendSuccess(

@@ -46,6 +46,8 @@ protected:
 
 	std::unordered_map<std::string, Handler> _handlers;
 
+	virtual std::shared_ptr<ThreadLogger> requestThreadLogger(const FCGIRequestData& requestData);
+
 	virtual void manageRequestAndResponse(const std::string_view& sThreadId, FCGX_Request &request, const FCGIRequestData& requestData) = 0;
 
 	virtual bool handleRequest(const std::string_view &sThreadId, FCGX_Request &request,
@@ -56,22 +58,6 @@ protected:
 	{
 		_handlers[name] = std::forward<F>(f);
 	}
-	/*
-	template <typename Derived, typename Method>
-	void registerHandler(const string& name, Method method)
-	{
-	// Il cast avviene una sola volta, se this non è Derived, il bug è immediato e riproducibile
-	auto* self = static_cast<Derived*>(this);
-
-	_handlers[name] = [self, method](
-		const string_view& sThreadId, int64_t requestIdentifier,
-		FCGX_Request& request, const FCGIRequestData& requestData)
-		{
-			// Chiama il metodo membro specificato
-			(self->*method)(sThreadId, requestIdentifier, request, requestData);
-		};
-	}
-	*/
 
 	virtual std::shared_ptr<FCGIRequestData::AuthorizationDetails> checkAuthorization(const std::string_view& sThreadId,
 		const FCGIRequestData& requestData, const std::string_view& userName, const std::string_view& password) = 0;
