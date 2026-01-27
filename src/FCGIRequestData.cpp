@@ -232,46 +232,6 @@ void FCGIRequestData::parseContentRange(string_view contentRange, uint64_t &cont
 	*/
 }
 
-string FCGIRequestData::getHtmlStandardMessage(int htmlResponseCode)
- {
- 	switch (htmlResponseCode)
- 	{
- 	case 200:
- 		return {"OK"};
- 	case 201:
- 		return {"Created"};
- 	case 204:
- 		return {"No Content"};
- 	case 301:
- 		return {"Moved Permanently"};
- 	case 302:
- 		return {"Found"};
- 	case 307:
- 		return {"Temporary Redirect"};
- 	case 308:
- 		return {"Permanent Redirect"};
- 	case 400:
- 		return {"Bad Request"};
- 	case 401:
- 		return {"Unauthorized"};
- 	case 403:
- 		return {"Forbidden"};
- 	case 404:
- 		return {"Not Found"};
- 	case 500:
- 		return {"Internal Server Error"};
- 	default:
- 		string errorMessage = std::format(
-			 "HTTP status code not managed"
-			 ", htmlResponseCode: {}",
-			 htmlResponseCode
-		 );
- 		LOG_ERROR(errorMessage);
-
- 		throw runtime_error(errorMessage);
- 	}
- }
-
 void FCGIRequestData::fillEnvironmentDetails(const char *const *envp)
 {
 	int valueIndex;

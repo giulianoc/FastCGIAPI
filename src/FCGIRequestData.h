@@ -1,10 +1,31 @@
-//
-// Created by Giuliano on 13.12.2025.
-//
+/*
+Copyright (C) Giuliano Catrambone (giulianocatrambone@gmail.com)
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+ Commercial use other than under the terms of the GNU General Public
+ License is allowed only after express negotiation of conditions
+ with the authors.
+*/
+
 
 #pragma once
 
 #include "StringUtils.h"
+#include "HTTPError.h"
 #include "spdlog/spdlog.h"
 #include <fcgiapp.h>
 #include <string>
@@ -14,14 +35,6 @@
 class FCGIRequestData final
 {
 public:
-	struct HTTPError final : std::runtime_error
-	{
-		int16_t httpErrorCode;
-		explicit HTTPError(const int16_t httpErrorCode, const std::string& errorMessage = "") :
-			std::runtime_error(errorMessage.empty() ? getHtmlStandardMessage(httpErrorCode) : errorMessage),
-			httpErrorCode(httpErrorCode) {};
-	};
-
 	class AuthorizationDetails
 	{
 	public:
@@ -41,8 +54,6 @@ public:
 
 	virtual ~FCGIRequestData() = default;
 	void init(const FCGX_Request & request, int64_t& maxAPIContentLength);
-
-	static std::string getHtmlStandardMessage(int htmlResponseCode);
 
 	static std::string escape(const std::string &url);
 	static std::string unescape(const std::string &url);
@@ -220,7 +231,7 @@ private:
 			if (mandatory)
 			{
 				LOG_ERROR("Missing mandatory header/query parameter: {}", parameterName);
-				throw HTTPError(400);
+				throw FastCGIError::HTTPError(400);
 			}
 
 			parameterValue = std::move(defaultParameter);
@@ -273,7 +284,7 @@ private:
 			if (mandatory)
 			{
 				LOG_ERROR("Missing mandatory query parameter: {}", parameterName);
-				throw HTTPError(400);
+				throw FastCGIError::HTTPError(400);
 			}
 
 			parameterValue = std::move(defaultParameter);

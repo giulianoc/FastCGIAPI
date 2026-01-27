@@ -152,7 +152,7 @@ int FastCGIAPI::operator()()
 						sThreadId, authorization
 					);
 
-					throw FCGIRequestData::HTTPError(401);
+					throw FastCGIError::HTTPError(401);
 				}
 
 				string usernameAndPasswordBase64 = authorization.substr(authorizationPrefix.length());
@@ -172,7 +172,7 @@ int FastCGIAPI::operator()()
 						sThreadId, usernameAndPasswordBase64, usernameAndPassword
 					);
 
-					throw FCGIRequestData::HTTPError(401);
+					throw FastCGIError::HTTPError(401);
 				}
 
 				string userName = usernameAndPassword.substr(0, userNameSeparator);
@@ -190,10 +190,10 @@ int FastCGIAPI::operator()()
 				);
 
 				int htmlResponseCode = 500;
-				if (dynamic_cast<FCGIRequestData::HTTPError*>(&e))
-					htmlResponseCode = dynamic_cast<FCGIRequestData::HTTPError*>(&e)->httpErrorCode;
+				if (dynamic_cast<FastCGIError::HTTPError*>(&e))
+					htmlResponseCode = dynamic_cast<FastCGIError::HTTPError*>(&e)->httpErrorCode;
 
-				string errorMessage = FCGIRequestData::getHtmlStandardMessage(htmlResponseCode);
+				string errorMessage = FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode);
 				LOG_ERROR(errorMessage);
 
 				sendError(request, htmlResponseCode, errorMessage); // unauthorized
@@ -347,7 +347,7 @@ void FastCGIAPI::sendSuccess(
 	string endLine = "\r\n";
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
-		FCGIRequestData::getHtmlStandardMessage(htmlResponseCode), endLine);
+		FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine);
 
 	string localContentType;
 	if (!responseBody.empty())
@@ -506,7 +506,7 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 	string completeHttpResponse = std::format(
 		"Status: {} {}{}"
 		"Location: {}{}",
-		htmlResponseCode, FCGIRequestData::getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine
+		htmlResponseCode, FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine
 	);
 	if (!contentType.empty())
 		completeHttpResponse += std::format("Content-Type: {}{}{}", contentType, endLine, endLine);
@@ -542,7 +542,7 @@ void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, un
 	string endLine = "\r\n";
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
-		FCGIRequestData::getHtmlStandardMessage(htmlResponseCode), endLine);
+		FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine);
 
 	string completeHttpResponse = std::format(
 		"{}"
@@ -567,7 +567,7 @@ void FastCGIAPI::sendHeadSuccess(int htmlResponseCode, unsigned long fileSize)
 	string endLine = "\r\n";
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
-		FCGIRequestData::getHtmlStandardMessage(htmlResponseCode), endLine);
+		FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine);
 
 	string completeHttpResponse = std::format(
 		"{}"
@@ -622,7 +622,7 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 	}
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
-		FCGIRequestData::getHtmlStandardMessage(htmlResponseCode), endLine);
+		FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine);
 
 	string completeHttpResponse = std::format(
 		"{}"
