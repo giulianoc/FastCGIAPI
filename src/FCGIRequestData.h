@@ -24,13 +24,15 @@ Copyright (C) Giuliano Catrambone (giulianocatrambone@gmail.com)
 
 #pragma once
 
-#include "StringUtils.h"
 #include "HTTPError.h"
+#include "StringUtils.h"
 #include "spdlog/spdlog.h"
 #include <fcgiapp.h>
+#include <set>
+#include <span>
+#include <spdlog/fmt/bundled/ranges.h>
 #include <string>
 #include <unordered_map>
-#include <set>
 
 class FCGIRequestData final
 {
@@ -52,48 +54,79 @@ public:
 	bool responseBodyCompressed;
 	std::string clientIPAddress;
 
-	virtual ~FCGIRequestData() = default;
+	~FCGIRequestData() = default;
 	void init(const FCGX_Request & request, int64_t& maxAPIContentLength);
 
 	static std::string escape(const std::string &url);
 	static std::string unescape(const std::string &url);
 
 	std::string getHeaderParameter(
-		const std::string& headerName, const char *defaultParameter = "", const bool mandatory = false,
-		bool *isParamPresent = nullptr
+		const std::string& headerName, const char *defaultParameter,
+		const bool mandatory, const std::initializer_list<std::string> allowedValues, bool *isParamPresent
 	) const
 	{
-		return getHeaderParameter(headerName, std::string(defaultParameter), mandatory, isParamPresent);
+		return getHeaderParameter(headerName, std::string(defaultParameter), mandatory,
+			std::span<const std::string>(allowedValues.begin(), allowedValues.size()), isParamPresent);
+	}
+
+	std::string getHeaderParameter(
+		const std::string& headerName, const char *defaultParameter = "",
+		const bool mandatory = false, std::span<const std::string> allowedValues = {}, bool *isParamPresent = nullptr
+	) const
+	{
+		return getHeaderParameter(headerName, std::string(defaultParameter), mandatory, allowedValues, isParamPresent);
 	}
 
 	template <typename T>
 	requires (!std::is_same_v<T, const char*>)
 	T getHeaderParameter(
 		const std::string& headerName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
+		std::span<const T> allowedValues = {}, bool *isParamPresent = nullptr
 	) const
 	{
 		return getMapParameter(_requestDetails, std::format("HTTP_{}",
 			StringUtils::replaceAll(StringUtils::upperCase(headerName), "-", "_")),
-			std::move(defaultParameter), mandatory, isParamPresent);
+			std::move(defaultParameter), mandatory, allowedValues, isParamPresent);
 	}
 
 	std::string getQueryParameter(
-		const std::string& parameterName, const char *defaultParameter = "", const bool mandatory = false,
-		bool *isParamPresent = nullptr
+		const std::string& parameterName, const char *defaultParameter, const bool mandatory,
+		const std::initializer_list<std::string> allowedValues, bool *isParamPresent
 	) const
 	{
-		return getMapParameter(_queryParameters, parameterName, std::string(defaultParameter), mandatory, isParamPresent);
+		return getMapParameter(_queryParameters, parameterName, std::string(defaultParameter),
+			mandatory, std::span<const std::string>(allowedValues.begin(), allowedValues.size()), isParamPresent);
+	}
+
+	std::string getQueryParameter(
+		const std::string& parameterName, const char *defaultParameter = "",
+		const bool mandatory = false,
+		const std::span<const std::string> allowedValues = {}, bool *isParamPresent = nullptr
+	) const
+	{
+		return getMapParameter(_queryParameters, parameterName, std::string(defaultParameter),
+			mandatory, allowedValues, isParamPresent);
+	}
+
+	template <typename T>
+	requires (!std::is_same_v<T, const char*>)
+	T getQueryParameter(
+		const std::string& parameterName, T defaultParameter, const bool mandatory,
+		const std::initializer_list<T> allowedValues, bool *isParamPresent
+	) const
+	{
+		return getMapParameter(_queryParameters, parameterName, defaultParameter, mandatory,
+			std::span<const T>(allowedValues.begin(), allowedValues.size()), isParamPresent);
 	}
 
 	template <typename T>
 	requires (!std::is_same_v<T, const char*>)
 	T getQueryParameter(
 		const std::string& parameterName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
+		std::span<const T> allowedValues = {}, bool *isParamPresent = nullptr
 	) const
 	{
-		return getMapParameter(_queryParameters, parameterName, defaultParameter, mandatory, isParamPresent);
+		return getMapParameter(_queryParameters, parameterName, defaultParameter, mandatory, allowedValues, isParamPresent);
 	}
 
 	template <typename T, template <class...> class C>
@@ -107,21 +140,36 @@ public:
 	}
 
 	template <typename T>
-	std::optional<T> getOptHeaderParameter(const std::string& parameterName) const
+	std::optional<T> getOptHeaderParameter(const std::string& parameterName, std::initializer_list<T> allowedValues) const
 	{
-		return getOptMapParameter<T>(_requestDetails, parameterName);
+		return getOptMapParameter<T>(_requestDetails, parameterName,
+			std::span<const T>(allowedValues.begin(), allowedValues.size()));
 	}
 
 	template <typename T>
-	std::optional<T> getOptQueryParameter(const std::string& parameterName) const
+	std::optional<T> getOptHeaderParameter(const std::string& parameterName, std::span<const T> allowedValues = {}) const
 	{
-		return getOptMapParameter<T>(_queryParameters, parameterName);
+		return getOptMapParameter<T>(_requestDetails, parameterName, allowedValues);
+	}
+
+	template <typename T>
+	std::optional<T> getOptQueryParameter(const std::string& parameterName, std::initializer_list<T> allowedValues) const
+	{
+		return getOptMapParameter<T>(_queryParameters, parameterName,
+			std::span<const T>(allowedValues.begin(), allowedValues.size()));
+	}
+
+	template <typename T>
+	std::optional<T> getOptQueryParameter(const std::string& parameterName, std::span<const T> allowedValues = {}) const
+	{
+		return getOptMapParameter<T>(_queryParameters, parameterName, allowedValues);
 	}
 
 	[[nodiscard]] std::unordered_map<std::string, std::string> getQueryParameters() const;
 	[[nodiscard]] std::vector<std::pair<std::string, std::string>> getHeaders() const;
 
-	static void parseContentRange(std::string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd, uint64_t &contentRangeSize);
+	static void parseContentRange(std::string_view contentRange, uint64_t &contentRangeStart, uint64_t &contentRangeEnd,
+		uint64_t &contentRangeSize);
 
 private:
 	std::unordered_map<std::string, std::string> _requestDetails;
@@ -133,60 +181,74 @@ private:
 
 	template <typename T>
 	static std::optional<T> getOptMapParameter(
-		const std::unordered_map<std::string, std::string> &mapParameters, const std::string& parameterName)
+		const std::unordered_map<std::string, std::string> &mapParameters, const std::string& parameterName,
+		std::span<const T> allowedValues = {})
 	{
 		T parameterValue;
 
-		auto it = mapParameters.find(parameterName);
-		if (it != mapParameters.end() && !it->second.empty())
+		const auto it = mapParameters.find(parameterName);
+		if (it == mapParameters.end() || it->second.empty())
+			return std::nullopt;
+
+		if constexpr (std::is_same_v<T, std::string>)
 		{
-			if constexpr (std::is_same_v<T, std::string>)
-			{
-				// 2021-01-07: Remark: we have FIRST to replace + in space and then apply
-				// unescape
-				//	That  because if we have really a + char (%2B into the std::string), and we
-				// do the replace 	after unescape, this char will be changed to space and we
-				// do not want it
-				std::string plus = "+";
-				std::string plusDecoded = " ";
-				const std::string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
+			// 2021-01-07: Remark: we have FIRST to replace + in space and then apply
+			// unescape
+			//	That  because if we have really a + char (%2B into the std::string), and we
+			// do the replace 	after unescape, this char will be changed to space and we
+			// do not want it
+			std::string plus = "+";
+			std::string plusDecoded = " ";
+			const std::string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
 
-				return unescape(firstDecoding);
-			}
-			else
+			parameterValue = unescape(firstDecoding);
+		}
+		else
+		{
+			try
 			{
-				try
-				{
-					parameterValue = StringUtils::getValue<T>(it->second);
-				}
-				catch (const std::exception &e)
-				{
-					LOG_ERROR("StringUtils::getValue failed"
-						", parameterName: {}"
-						", exception: {}", parameterName, e.what());
-					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
-				}
+				parameterValue = StringUtils::getValue<T>(it->second);
 			}
-
-			return parameterValue;
+			catch (const std::exception &e)
+			{
+				const std::string errorMessage = std::format("StringUtils::getValue failed"
+					", parameterName: {}"
+					", parameterValue: {}"
+					", exception: {}", parameterName, it->second, e.what());
+				LOG_ERROR(errorMessage);
+				throw std::runtime_error(errorMessage);
+			}
 		}
 
-		return std::nullopt;
+		if (!allowedValues.empty())
+		{
+			if (std::ranges::find(allowedValues, parameterValue) == allowedValues.end())
+			{
+				const std::string errorMessage = fmt::format("Invalid value '{}' for '{}'. Allowed values are: {}",
+					parameterValue, parameterName, fmt::join(allowedValues, ", ")
+					);
+				LOG_ERROR(errorMessage);
+				throw std::runtime_error(errorMessage);
+			}
+		}
+
+		return parameterValue;
 	}
 
 	static std::string getMapParameter(
-		const std::unordered_map<std::string, std::string> &mapParameters, const std::string &parameterName, const char *defaultParameter, const bool mandatory,
-		bool *isParamPresent = nullptr
+		const std::unordered_map<std::string, std::string> &mapParameters, const std::string &parameterName, const char *defaultParameter,
+		const bool mandatory = false, std::span<const std::string> allowedValues = {}, bool *isParamPresent = nullptr
 	)
 	{
-		return getMapParameter(mapParameters, parameterName, std::string(defaultParameter), mandatory, isParamPresent);
+		return getMapParameter(mapParameters, parameterName, std::string(defaultParameter),
+			mandatory, allowedValues, isParamPresent);
 	}
 
 	template <typename T>
 	requires (!std::is_same_v<T, const char*>)
 	static T getMapParameter(
-		const std::unordered_map<std::string, std::string> &mapParameters, const std::string& parameterName, T defaultParameter, const bool mandatory = false,
-		bool *isParamPresent = nullptr
+		const std::unordered_map<std::string, std::string> &mapParameters, const std::string& parameterName, T defaultParameter,
+		const bool mandatory = false, std::span<const T> allowedValues = {}, bool *isParamPresent = nullptr
 	)
 	{
 		T parameterValue;
@@ -207,7 +269,7 @@ private:
 				std::string plusDecoded = " ";
 				const std::string firstDecoding = StringUtils::replaceAll(StringUtils::getValue<T>(it->second), plus, plusDecoded);
 
-				return unescape(firstDecoding);
+				parameterValue = unescape(firstDecoding);
 			}
 			else
 			{
@@ -221,6 +283,17 @@ private:
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
 					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
+				}
+			}
+			if (!allowedValues.empty())
+			{
+				if (std::ranges::find(allowedValues, parameterValue) == allowedValues.end())
+				{
+					const std::string errorMessage = fmt::format("Invalid value '{}' for '{}'. Allowed values are: {}",
+						parameterValue, parameterName, fmt::join(allowedValues, ", ")
+						);
+					LOG_ERROR(errorMessage);
+					throw FastCGIError::HTTPError(400);
 				}
 			}
 		}
@@ -292,5 +365,4 @@ private:
 
 		return parameterValue;
 	}
-
 };

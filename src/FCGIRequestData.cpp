@@ -13,13 +13,13 @@ void FCGIRequestData::init(const FCGX_Request & request, int64_t& maxAPIContentL
  	{
  		fillEnvironmentDetails(request.envp);
 
- 		requestMethod = getMapParameter(_requestDetails, "REQUEST_METHOD", "", false);
+ 		requestMethod = getMapParameter(_requestDetails, "REQUEST_METHOD", "");
 
  		// contentLength
  		{
  			if (requestMethod == "POST" || requestMethod == "PUT")
  			{
- 				string sContentLength = getMapParameter(_requestDetails, "CONTENT_LENGTH", "0", false);
+ 				string sContentLength = getMapParameter(_requestDetails, "CONTENT_LENGTH", "0");
  				contentLength = stoul(sContentLength);
  			}
  			else
@@ -48,13 +48,13 @@ void FCGIRequestData::init(const FCGX_Request & request, int64_t& maxAPIContentL
  			delete[] content;
  		}
 
- 		requestURI = getMapParameter(_requestDetails, "REQUEST_URI", "", false);
+ 		requestURI = getMapParameter(_requestDetails, "REQUEST_URI", "");
 
-	 	responseBodyCompressed = getHeaderParameter("x-responseBodyCompressed", "false", false) == "true";
+	 	responseBodyCompressed = getHeaderParameter("x-responseBodyCompressed", "false") == "true";
 
  		// REMOTE_ADDR is the address of the load balancer
  		// auto remoteAddrIt = requestDetails.find("REMOTE_ADDR");
- 		clientIPAddress = getHeaderParameter("x-forwarded-for", "", false);
+ 		clientIPAddress = getHeaderParameter("x-forwarded-for", "");
  	}
  	catch (exception &e)
  	{

@@ -266,7 +266,7 @@ bool FastCGIAPI::handleRequest(
 	const FCGIRequestData& requestData, const bool exceptionIfNotManaged)
 {
 	bool isParamPresent;
-	const string method = requestData.getQueryParameter("x-api-method", "", false, &isParamPresent);
+	const string method = requestData.getQueryParameter("x-api-method", "", false, {}, &isParamPresent);
 	if (!isParamPresent)
 	{
 		if (exceptionIfNotManaged)
