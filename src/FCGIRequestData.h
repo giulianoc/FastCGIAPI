@@ -62,7 +62,7 @@ public:
 
 	std::string getHeaderParameter(
 		const std::string& headerName, const char *defaultParameter,
-		const bool mandatory, const std::initializer_list<std::string> allowedValues, bool *isParamPresent
+		const bool mandatory, const std::initializer_list<std::string> allowedValues, bool *isParamPresent = nullptr
 	) const
 	{
 		return getHeaderParameter(headerName, std::string(defaultParameter), mandatory,
@@ -91,7 +91,7 @@ public:
 
 	std::string getQueryParameter(
 		const std::string& parameterName, const char *defaultParameter, const bool mandatory,
-		const std::initializer_list<std::string> allowedValues, bool *isParamPresent
+		const std::initializer_list<std::string> allowedValues, bool *isParamPresent = nullptr
 	) const
 	{
 		return getMapParameter(_queryParameters, parameterName, std::string(defaultParameter),
@@ -112,7 +112,7 @@ public:
 	requires (!std::is_same_v<T, const char*>)
 	T getQueryParameter(
 		const std::string& parameterName, T defaultParameter, const bool mandatory,
-		const std::initializer_list<T> allowedValues, bool *isParamPresent
+		const std::initializer_list<T> allowedValues, bool *isParamPresent = nullptr
 	) const
 	{
 		return getMapParameter(_queryParameters, parameterName, defaultParameter, mandatory,
@@ -216,7 +216,7 @@ private:
 					", parameterValue: {}"
 					", exception: {}", parameterName, it->second, e.what());
 				LOG_ERROR(errorMessage);
-				throw std::runtime_error(errorMessage);
+				throw FastCGIError::HTTPError(400, errorMessage);
 			}
 		}
 
@@ -228,7 +228,7 @@ private:
 					parameterValue, parameterName, fmt::join(allowedValues, ", ")
 					);
 				LOG_ERROR(errorMessage);
-				throw std::runtime_error(errorMessage);
+				throw FastCGIError::HTTPError(400, errorMessage);
 			}
 		}
 
@@ -279,10 +279,11 @@ private:
 				}
 				catch (const std::exception &e)
 				{
-					LOG_ERROR("StringUtils::getValue failed"
+					const std::string errorMessage = std::format("StringUtils::getValue failed"
 						", parameterName: {}"
 						", exception: {}", parameterName, e.what());
-					throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
+					LOG_ERROR(errorMessage);
+					throw FastCGIError::HTTPError(400, errorMessage);
 				}
 			}
 			if (!allowedValues.empty())
@@ -293,7 +294,7 @@ private:
 						parameterValue, parameterName, fmt::join(allowedValues, ", ")
 						);
 					LOG_ERROR(errorMessage);
-					throw FastCGIError::HTTPError(400);
+					throw FastCGIError::HTTPError(400, errorMessage);
 				}
 			}
 		}
@@ -303,8 +304,9 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				LOG_ERROR("Missing mandatory header/query parameter: {}", parameterName);
-				throw FastCGIError::HTTPError(400);
+				const std::string errorMessage = std::format("Missing mandatory header/query parameter: {}", parameterName);
+				LOG_ERROR(errorMessage);
+				throw FastCGIError::HTTPError(400, errorMessage);
 			}
 
 			parameterValue = std::move(defaultParameter);
@@ -342,10 +344,11 @@ private:
 					}
 					catch (const std::exception &e)
 					{
-						LOG_ERROR("StringUtils::getValue failed"
+						const std::string errorMessage = std::format("StringUtils::getValue failed"
 							", parameterName: {}"
 							", exception: {}", parameterName, e.what());
-						throw std::runtime_error(std::format("parameterName: {} - {}", parameterName, e.what()));
+						LOG_ERROR(errorMessage);
+						throw FastCGIError::HTTPError(400, errorMessage);
 					}
 				}
 			}
@@ -356,8 +359,9 @@ private:
 				*isParamPresent = false;
 			if (mandatory)
 			{
-				LOG_ERROR("Missing mandatory query parameter: {}", parameterName);
-				throw FastCGIError::HTTPError(400);
+				const std::string errorMessage = std::format("Missing mandatory query parameter: {}", parameterName);
+				LOG_ERROR(errorMessage);
+				throw FastCGIError::HTTPError(400, errorMessage);
 			}
 
 			parameterValue = std::move(defaultParameter);
