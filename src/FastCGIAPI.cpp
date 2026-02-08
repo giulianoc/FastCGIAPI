@@ -182,11 +182,15 @@ int FastCGIAPI::operator()()
 			}
 			catch (exception &e)
 			{
+				auto method = requestData.getQueryParameter("x-api-method");
 				LOG_ERROR(
 					"checkAuthorization failed"
 					", threadId: {}"
+					", clientIPAddress: {}"
+					", method: {}"
+					", requestURI: {}"
 					", e.what(): {}",
-					sThreadId, e.what()
+					sThreadId, requestData.clientIPAddress, method, requestData.requestURI, e.what()
 				);
 
 				int htmlResponseCode = 500;
