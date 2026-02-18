@@ -80,7 +80,7 @@ int FastCGIAPI::operator()()
 				", threadId: {}",
 				sThreadId
 			);
-			lock_guard<mutex> locker(*_fcgiAcceptMutex);
+			lock_guard locker(*_fcgiAcceptMutex);
 
 			LOG_TRACE(
 				"FastCGIAPI::listen"
@@ -213,6 +213,8 @@ int FastCGIAPI::operator()()
 		{
 			shared_ptr<ThreadLogger> threadLogger = requestThreadLogger(requestData);
 
+			auto method = requestData.getQueryParameter("x-api-method", "", false);
+
 			chrono::system_clock::time_point startManageRequest = chrono::system_clock::now();
 			try
 			{
@@ -223,13 +225,16 @@ int FastCGIAPI::operator()()
 				LOG_ERROR(
 					"manageRequestAndResponse failed"
 					", threadId: {}"
+					", clientIPAddress: @{}@"
+					", method: @{}@"
+					", requestURI: {}"
+					", authorizationPresent: {}"
 					", exception: {}",
-					sThreadId, e.what()
+					sThreadId, requestData.clientIPAddress, method, requestData.requestURI, authorizationPresent, e.what()
 				);
 			}
 			if (!requestData.requestURI.ends_with("/status"))
 			{
-				auto method = requestData.getQueryParameter("x-api-method", "", false);
 				LOG_INFO(
 					"manageRequestAndResponse"
 					", threadId: {}"
