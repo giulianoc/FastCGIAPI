@@ -91,6 +91,12 @@ int FastCGIAPI::operator()()
 			if (_shutdown)
 				continue;
 
+			/*
+			Con FastCGI (fcgiapp) bisogna serializzare FCGX_Accept_r se:
+			- usi lo stesso socket
+			- la libreria non è thread-safe per accept concorrenti
+			Per questo si utilizza il mutex.
+			*/
 			returnAcceptCode = FCGX_Accept_r(&request);
 		}
 		LOG_TRACE(
