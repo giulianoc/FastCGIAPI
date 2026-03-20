@@ -1,6 +1,3 @@
-//
-// Created by Giuliano on 13.12.2025.
-//
 
 #include "FCGIRequestData.h"
 #include <curl/curl.h>
