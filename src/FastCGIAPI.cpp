@@ -500,7 +500,7 @@ void FastCGIAPI::sendSuccess(
 	_fcgxFinishDone = true;
 }
 
-void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& locationURL, bool permanently, const string_view& contentType)
+void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& locationURL, const bool permanently, const string_view& contentType)
 {
 	if (_fcgxFinishDone)
 	{
@@ -516,7 +516,8 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 
 	string endLine = "\r\n";
 
-	int htmlResponseCode = permanently ? 301 : 302;
+	// int htmlResponseCode = permanently ? 301 : 302;
+	int htmlResponseCode = permanently ? 308 : 307;
 
 	string completeHttpResponse = std::format(
 		"Status: {} {}{}"
