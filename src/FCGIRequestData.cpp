@@ -271,6 +271,7 @@ void FCGIRequestData::fillEnvironmentDetails(const char *const *envp)
 		fillQueryString(it->second);
 }
 
+/*
 void FCGIRequestData::fillQueryString(const string& queryString)
 {
 	stringstream ss(queryString);
@@ -304,6 +305,50 @@ void FCGIRequestData::fillQueryString(const string& queryString)
 				key, value
 			);
 		}
+	}
+}
+*/
+// nuova versione
+void FCGIRequestData::fillQueryString(std::string_view queryString)
+{
+	std::size_t startParameterIndex = 0;
+
+	while (startParameterIndex < queryString.size())
+	{
+		const std::size_t endParameterIndex = queryString.find('&', startParameterIndex);
+		const std::string_view token = queryString.substr(startParameterIndex,
+			endParameterIndex == std::string_view::npos ? queryString.size() - startParameterIndex : endParameterIndex - startParameterIndex
+		);
+
+		if (!token.empty())
+		{
+			const std::size_t equalIndex = token.find('=');
+
+			std::string key;
+			std::string value;
+
+			if (equalIndex == std::string_view::npos)
+				key = std::string(token);
+			else
+			{
+				key = std::string(token.substr(0, equalIndex));
+				value = std::string(token.substr(equalIndex + 1));
+			}
+
+			// in caso di key duplicata (a=1&a=2) sovrascrivo il valore precedente, tenendo l'ultimo (last wins)
+			_queryParameters[key] = value;
+
+			LOG_TRACE(
+				"Query parameter"
+				", key/Name: {}={}",
+				key, value
+			);
+		}
+
+		if (endParameterIndex == std::string_view::npos)
+			break;
+
+		startParameterIndex = endParameterIndex + 1;
 	}
 }
 

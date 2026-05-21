@@ -175,7 +175,7 @@ private:
 
 
 	void fillEnvironmentDetails(const char *const *envp);
-	void fillQueryString(const std::string& queryString);
+	void fillQueryString(std::string_view queryString);
 
 	template <typename T>
 	static std::optional<T> getOptMapParameter(
