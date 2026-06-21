@@ -241,7 +241,7 @@ int FastCGIAPI::operator()()
 			}
 			if (!requestData.requestURI.ends_with("/status"))
 			{
-				LOG_INFO(
+				LOG_DEBUG(
 					"manageRequestAndResponse"
 					", threadId: {}"
 					", clientIPAddress: @{}@"
