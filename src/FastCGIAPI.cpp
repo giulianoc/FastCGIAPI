@@ -447,36 +447,17 @@ void FastCGIAPI::sendSuccess(
 		unsigned long contentLength = responseBody.length();
 
 		// responseBody cannot have the '%' char because FCGX_FPrintF will not work
-		if (responseBody.find('%') != string::npos)
-		{
-			string toBeSearched = "%";
-			string replacedWith = "%%";
-			string newResponseBody = StringUtils::replaceAll(responseBody, toBeSearched, replacedWith);
-
-			completeHttpResponse = std::format(
-				"{}"
-				"{}"
-				"{}"
-				"{}"
-				"Content-Length: {}{}"
-				"{}"
-				"{}",
-				httpStatus, localContentType, cookieHeader, corsGETHeader, contentLength, endLine, endLine, newResponseBody
-			);
-		}
-		else
-		{
-			completeHttpResponse = std::format(
-				"{}"
-				"{}"
-				"{}"
-				"{}"
-				"Content-Length: {}{}"
-				"{}"
-				"{}",
-				httpStatus, localContentType, cookieHeader, corsGETHeader, contentLength, endLine, endLine, responseBody
-			);
-		}
+		completeHttpResponse = std::format(
+			"{}"
+			"{}"
+			"{}"
+			"{}"
+			"Content-Length: {}{}"
+			"{}"
+			"{}",
+			httpStatus, localContentType, cookieHeader, corsGETHeader, contentLength, endLine, endLine,
+			responseBody.find('%') != string::npos ? StringUtils::replaceAll(responseBody, "%", "%%") : responseBody
+		);
 
 		if (!requestURI.ends_with("/status"))
 			LOG_INFO(
@@ -517,12 +498,14 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 	string endLine = "\r\n";
 
 	// int htmlResponseCode = permanently ? 301 : 302;
-	int htmlResponseCode = permanently ? 308 : 307;
+	int16_t htmlResponseCode = permanently ? 308 : 307;
 
 	string completeHttpResponse = std::format(
 		"Status: {} {}{}"
 		"Location: {}{}",
-		htmlResponseCode, FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine, locationURL, endLine
+		htmlResponseCode, FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine,
+		locationURL.find('%') != string::npos ? StringUtils::replaceAll(locationURL, "%", "%%") : locationURL,
+		endLine
 	);
 	if (!contentType.empty())
 		completeHttpResponse += std::format("Content-Type: {}{}{}", contentType, endLine, endLine);
@@ -541,7 +524,7 @@ void FastCGIAPI::sendRedirect(FCGX_Request &request, const string_view& location
 	_fcgxFinishDone = true;
 }
 
-void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, unsigned long fileSize)
+void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int16_t htmlResponseCode, unsigned long fileSize)
 {
 	if (_fcgxFinishDone)
 	{
@@ -578,7 +561,7 @@ void FastCGIAPI::sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, un
 	_fcgxFinishDone = true;
 }
 
-void FastCGIAPI::sendHeadSuccess(int htmlResponseCode, unsigned long fileSize)
+void FastCGIAPI::sendHeadSuccess(int16_t htmlResponseCode, unsigned long fileSize)
 {
 	string endLine = "\r\n";
 
@@ -599,7 +582,7 @@ void FastCGIAPI::sendHeadSuccess(int htmlResponseCode, unsigned long fileSize)
 	);
 }
 
-void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const string_view& responseBody)
+void FastCGIAPI::sendError(FCGX_Request &request, int16_t htmlResponseCode, const string_view& responseBody)
 {
 	if (_fcgxFinishDone)
 	{
@@ -615,27 +598,10 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 
 	string endLine = "\r\n";
 
-	unsigned long contentLength;
-	string localResponseBody;
-
-	// string responseBody;
-	// errorMessage cannot have the '%' char because FCGX_FPrintF will not work
-	if (responseBody.find('%') != string::npos)
-	{
-		// 2020-02-08: content length has to be calculated before the substitution
-		// from % to %% because for FCGX_FPrintF (below used) %% is just one
-		// character
-		contentLength = responseBody.length();
-
-		const string toBeSearched = "%";
-		const string replacedWith = "%%";
-		localResponseBody = StringUtils::replaceAll(responseBody, toBeSearched, replacedWith);
-	}
-	else
-	{
-		contentLength = responseBody.length();
-		localResponseBody = responseBody;
-	}
+	// 2020-02-08: content length has to be calculated before the substitution
+	// from % to %% because for FCGX_FPrintF (below used) %% is just one
+	// character
+	unsigned long contentLength = responseBody.length();
 
 	string httpStatus = std::format("Status: {} {}{}", htmlResponseCode,
 		FastCGIError::HTTPError::getHtmlStandardMessage(htmlResponseCode), endLine);
@@ -646,7 +612,8 @@ void FastCGIAPI::sendError(FCGX_Request &request, int htmlResponseCode, const st
 		"Content-Length: {}{}"
 		"{}"
 		"{}",
-		httpStatus, endLine, contentLength, endLine, endLine, localResponseBody
+		httpStatus, endLine, contentLength, endLine, endLine,
+		responseBody.find('%') != string::npos ? StringUtils::replaceAll(responseBody, "%", "%%") : responseBody
 	);
 
 	LOG_INFO(

@@ -90,9 +90,9 @@ protected:
 		const std::string_view& cookiePath= "", bool enableCorsGETHeader = false, const std::string_view& originHeader = ""
 	);
 	void sendRedirect(FCGX_Request &request, const std::string_view& locationURL, bool permanently, const std::string_view& contentType = "");
-	void sendHeadSuccess(FCGX_Request &request, int htmlResponseCode, unsigned long fileSize);
-	static void sendHeadSuccess(int htmlResponseCode, unsigned long fileSize);
-	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const std::string_view& errorMessage);
+	void sendHeadSuccess(FCGX_Request &request, int16_t htmlResponseCode, unsigned long fileSize);
+	static void sendHeadSuccess(int16_t htmlResponseCode, unsigned long fileSize);
+	virtual void sendError(FCGX_Request &request, int16_t htmlResponseCode, const std::string_view &responseBody);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
   private:
