@@ -29,7 +29,7 @@
 
 class FastCGIAPI
 {
-  public:
+public:
 
 	using Handler = std::function<void(
 		const std::string_view&, // sThreadId
@@ -49,7 +49,6 @@ protected:
 
 	virtual ~FastCGIAPI();
 
-  protected:
 	// ATTENZIONE, questa architettura è thread-safe ma NON request-safe perchè:
 	//	- thread-safe: ogni thread ha la sua istanza di FastCGIAPI
 	//	- non è request-safe: ogni richiesta NON ha la sua istanza di FastCGIAPI (1 istanza di FastCGIAPI gestisce N richieste)
@@ -95,7 +94,7 @@ protected:
 	virtual void sendError(FCGX_Request &request, int htmlResponseCode, const std::string_view& errorMessage);
 	// void sendError(int htmlResponseCode, string errorMessage);
 
-  private:
+private:
 	void loadConfiguration(nlohmann::json configurationRoot);
 
 	static std::string base64_encode(const std::string &in);
